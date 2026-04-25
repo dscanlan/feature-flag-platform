@@ -1,0 +1,24 @@
+{
+  "name": "@ffp/e2e-node",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ffp/e2e-stack": "workspace:*",
+    "@ffp/resolver": "workspace:*",
+    "@ffp/sdk": "workspace:*",
+    "@ffp/shared-types": "workspace:*",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
+  }
+}

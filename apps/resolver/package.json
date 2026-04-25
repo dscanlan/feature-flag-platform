@@ -1,0 +1,33 @@
+{
+  "name": "@ffp/resolver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ffp/resolver-engine": "workspace:*",
+    "@ffp/shared-types": "workspace:*",
+    "@fastify/cors": "^9.0.1",
+    "fastify": "^4.28.1",
+    "ioredis": "^5.4.1",
+    "pg": "^8.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@ffp/sdk": "workspace:*",
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "node-pg-migrate": "^7.6.1",
+    "pino": "^9.2.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
+  }
+}
