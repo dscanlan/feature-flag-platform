@@ -9,7 +9,9 @@ test.describe("wrong type guard", () => {
     await seed.setCorsOrigins(["*"]);
   });
 
-  test("reading a JSON flag as boolean returns the default and logs WRONG_TYPE", async ({ page }) => {
+  test("reading a JSON flag as boolean returns the default and logs WRONG_TYPE", async ({
+    page,
+  }) => {
     const warnings: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "warning") {
@@ -21,8 +23,6 @@ test.describe("wrong type guard", () => {
     await page.getByTestId("read-pricing-as-boolean").check();
 
     await expectBanner(page, "off");
-    await expect
-      .poll(() => warnings.some((entry) => entry.includes("WRONG_TYPE")))
-      .toBeTruthy();
+    await expect.poll(() => warnings.some((entry) => entry.includes("WRONG_TYPE"))).toBeTruthy();
   });
 });

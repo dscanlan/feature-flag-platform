@@ -28,7 +28,10 @@ const server = createServer(async (req, res) => {
       });
     }
 
-    if (req.method === "POST" && (req.url === "/sign-subject-token" || req.url === "/sign-bad-token")) {
+    if (
+      req.method === "POST" &&
+      (req.url === "/sign-subject-token" || req.url === "/sign-bad-token")
+    ) {
       const body = await readBody(req);
       const userId = body.userId ?? runtime.users[0] ?? "user-anon";
       const now = Math.floor(Date.now() / 1000);

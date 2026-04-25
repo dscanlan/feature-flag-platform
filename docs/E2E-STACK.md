@@ -39,6 +39,7 @@ pnpm --filter @ffp/e2e-stack start
 ```
 
 This will:
+
 1. Start Docker services (visible via `docker ps`)
 2. Create `.runtime/stack.json` with service URLs and credentials
 3. Create a default workspace and stage
@@ -106,17 +107,17 @@ Pre-defined URLs and credentials for the test stack.
 
 ```ts
 import {
-  adminApiUrl,      // "http://127.0.0.1:4100"
-  resolverUrl,      // "http://127.0.0.1:4101"
-  appOrigin,        // "http://127.0.0.1:5180"
-  sidecarUrl,       // "http://127.0.0.1:5181"
-  databaseUrl,      // "postgres://flags:flags@127.0.0.1:5434/flags"
-  redisUrl,         // "redis://127.0.0.1:6381/15"
-  adminEmail,       // "e2e-admin@example.com"
-  adminPassword,    // "e2e-password-123"
+  adminApiUrl, // "http://127.0.0.1:4100"
+  resolverUrl, // "http://127.0.0.1:4101"
+  appOrigin, // "http://127.0.0.1:5180"
+  sidecarUrl, // "http://127.0.0.1:5181"
+  databaseUrl, // "postgres://flags:flags@127.0.0.1:5434/flags"
+  redisUrl, // "redis://127.0.0.1:6381/15"
+  adminEmail, // "e2e-admin@example.com"
+  adminPassword, // "e2e-password-123"
   defaultWorkspaceKey,
   defaultStageKey,
-  users,            // ["user-anon", "user-pinned", "user-vip"]
+  users, // ["user-anon", "user-pinned", "user-vip"]
 } from "@ffp/e2e-stack";
 ```
 
@@ -244,6 +245,7 @@ psql "postgres://flags:flags@127.0.0.1:5434/flags"
 ```
 
 Query flags:
+
 ```sql
 SELECT id, name, type FROM flags LIMIT 10;
 SELECT * FROM flag_values;
@@ -314,6 +316,7 @@ kill -9 <PID>
 ### "Stack didn't write runtime.json"
 
 This means the stack failed to start. Check:
+
 1. Docker is running
 2. Ports are available
 3. Logs have useful errors: `docker compose ... logs`

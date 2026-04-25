@@ -1,4 +1,11 @@
-import type { ApiError, Flag, FlagStageConfig, ResolverResolveResponse, Stage, Workspace } from "@ffp/shared-types";
+import type {
+  ApiError,
+  Flag,
+  FlagStageConfig,
+  ResolverResolveResponse,
+  Stage,
+  Workspace,
+} from "@ffp/shared-types";
 import {
   adminApiUrl as defaultAdminApiUrl,
   adminEmail as defaultAdminEmail,
@@ -83,7 +90,11 @@ export class SeedClient {
 
   async ensureStage(): Promise<StageContext> {
     const workspace = await this.ensureWorkspace(this.options.workspaceKey, "E2E Web");
-    const stage = await this.ensureStageForWorkspace(workspace.key, this.options.stageKey, "Playwright");
+    const stage = await this.ensureStageForWorkspace(
+      workspace.key,
+      this.options.stageKey,
+      "Playwright",
+    );
     return { workspace, stage };
   }
 
@@ -209,7 +220,11 @@ export class SeedClient {
     );
   }
 
-  async waitForCors(origin: string, allowed: boolean, timeoutMs: number = stackTimeoutMs): Promise<void> {
+  async waitForCors(
+    origin: string,
+    allowed: boolean,
+    timeoutMs: number = stackTimeoutMs,
+  ): Promise<void> {
     await this.waitForResolve(
       async () => {
         const res = await fetch(`${this.options.resolverUrl}/sdk/resolve`, {
@@ -231,7 +246,11 @@ export class SeedClient {
   private async ensureFlag(body: Record<string, unknown>): Promise<FlagDetail> {
     const flagKey = String(body.key);
     try {
-      await this.requestJson<Flag>("POST", `/api/v1/workspaces/${this.options.workspaceKey}/flags`, body);
+      await this.requestJson<Flag>(
+        "POST",
+        `/api/v1/workspaces/${this.options.workspaceKey}/flags`,
+        body,
+      );
     } catch (err) {
       if (!String(err).includes("409")) throw err;
     }

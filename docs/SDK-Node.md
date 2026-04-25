@@ -42,15 +42,15 @@ client.close();
 ```ts
 interface ServerClientOptions {
   // Required
-  baseUrl: string;              // resolver endpoint
-  serverKey: string;            // server-only authentication key
-  subject: Subject;             // entity to evaluate flags for
+  baseUrl: string; // resolver endpoint
+  serverKey: string; // server-only authentication key
+  subject: Subject; // entity to evaluate flags for
 
   // Optional
-  pollIntervalMs?: number;      // default 30000 (30 seconds)
-  logger?: Logger;              // custom logging function
-  fetch?: typeof fetch;         // custom fetch (for testing)
-  streaming?: boolean;          // enable SSE (default true)
+  pollIntervalMs?: number; // default 30000 (30 seconds)
+  logger?: Logger; // custom logging function
+  fetch?: typeof fetch; // custom fetch (for testing)
+  streaming?: boolean; // enable SSE (default true)
 }
 ```
 
@@ -175,9 +175,9 @@ Get the current client state (ready, error, connectionState, version).
 
 ```ts
 const state = client.getState();
-console.log(state.ready);            // boolean
-console.log(state.error);            // unknown | null
-console.log(state.connectionState);  // "connecting" | "streaming" | "polling" | "offline"
+console.log(state.ready); // boolean
+console.log(state.error); // unknown | null
+console.log(state.connectionState); // "connecting" | "streaming" | "polling" | "offline"
 ```
 
 ### `subscribe(listener: () => void): () => void`
@@ -266,9 +266,7 @@ async function startup() {
   try {
     await Promise.race([
       client.ready(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), 5000)
-      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 5000)),
     ]);
     console.log("Flags loaded");
   } catch (err) {
@@ -310,8 +308,7 @@ import { createServerClient } from "@ffp/sdk/server";
 import { test, expect } from "vitest";
 
 test("handles missing flags", async () => {
-  const mockFetch = async () =>
-    new Response(JSON.stringify({ results: {} }));
+  const mockFetch = async () => new Response(JSON.stringify({ results: {} }));
 
   const client = createServerClient({
     baseUrl: "http://localhost",
@@ -338,17 +335,20 @@ test("handles missing flags", async () => {
 ## Troubleshooting
 
 ### Flags not updating
+
 1. Verify `serverKey` is correct
 2. Check resolver connectivity: `client.getState().error`
 3. Confirm subject changes with `client.getSubject()`
 4. Review logs: pass a `logger` function to see SDK activity
 
 ### High latency
+
 1. Try `streaming: false` to disable SSE overhead
 2. Increase `pollIntervalMs` if immediate updates aren't needed
 3. Move resolver closer (geographically or via CDN)
 
 ### Memory leaks
+
 1. Always call `client.close()` on shutdown
 2. Unsubscribe from `on(...)` listeners when done
 3. For short-lived clients (per-request), create and destroy per request or use a singleton

@@ -52,16 +52,16 @@ window.addEventListener("beforeunload", () => {
 ```ts
 interface ClientOptions {
   // Required
-  baseUrl: string;              // resolver endpoint
-  publicKey: string;            // public authentication key
-  subject: Subject;             // entity to evaluate flags for
+  baseUrl: string; // resolver endpoint
+  publicKey: string; // public authentication key
+  subject: Subject; // entity to evaluate flags for
 
   // Optional
-  subjectToken?: string;        // signed token (overrides subject)
-  pollIntervalMs?: number;      // default 30000 (30 seconds)
-  logger?: Logger;              // custom logging function
-  fetch?: typeof fetch;         // custom fetch (for testing)
-  streaming?: boolean;          // enable SSE (default true)
+  subjectToken?: string; // signed token (overrides subject)
+  pollIntervalMs?: number; // default 30000 (30 seconds)
+  logger?: Logger; // custom logging function
+  fetch?: typeof fetch; // custom fetch (for testing)
+  streaming?: boolean; // enable SSE (default true)
 }
 ```
 
@@ -224,10 +224,10 @@ Get the current SDK state including ready, error, and connection state.
 ```ts
 const state = client.getState();
 
-console.log(state.ready);            // true/false
-console.log(state.error);            // null or error object
-console.log(state.connectionState);  // "connecting"|"streaming"|"polling"|"offline"
-console.log(state.version);          // version counter
+console.log(state.ready); // true/false
+console.log(state.error); // null or error object
+console.log(state.connectionState); // "connecting"|"streaming"|"polling"|"offline"
+console.log(state.version); // version counter
 ```
 
 ### `subscribe(listener: () => void): () => void`
@@ -276,9 +276,7 @@ client.on("change", () => {
 
 function renderUI() {
   const isNewCheckout = client.boolFlag("new-checkout", false);
-  document.getElementById("checkout-btn").href = isNewCheckout
-    ? "/checkout/v2"
-    : "/checkout/v1";
+  document.getElementById("checkout-btn").href = isNewCheckout ? "/checkout/v2" : "/checkout/v1";
 }
 
 // Initial render
@@ -467,7 +465,7 @@ test("returns default for missing flags", async () => {
       JSON.stringify({
         results: {},
         streamToken: "token",
-      })
+      }),
     );
 
   const client = createClient({
@@ -495,17 +493,20 @@ test("returns default for missing flags", async () => {
 ## Troubleshooting
 
 ### Flags always return default
+
 1. Check `publicKey` is correct
 2. Verify resolver is reachable: check network tab in DevTools
 3. Confirm subject exists in resolver admin UI
 4. Check `client.getState().error` for clues
 
 ### High latency in updates
+
 1. Verify SSE is connected: `state.connectionState === "streaming"`
 2. If polling, adjust `pollIntervalMs` if latency is acceptable
 3. Check resolver server response times
 
 ### Memory leaks
+
 1. Always call `client.close()` when done
 2. Unsubscribe from `on()` listeners when component unmounts
 3. In SPAs, close client on route change if creating per-route clients

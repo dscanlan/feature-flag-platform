@@ -99,6 +99,7 @@ The SDK is split into subpaths for size and dependency isolation:
 - `@ffp/sdk/react`: React Provider and hooks (requires React 18+)
 
 This design ensures:
+
 - Server code doesn't bundle React
 - Browser code doesn't bundle Node dependencies
 - React apps opt-in to the provider pattern

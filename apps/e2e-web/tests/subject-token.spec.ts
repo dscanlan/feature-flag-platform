@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { configureCheckout, ensureHarnessFlags } from "./helpers/stack";
-import { expectBanner, gotoHarness, lastError, pickTokenUser, pickUser, useBadToken, useRaw, useToken } from "./helpers/page";
+import {
+  expectBanner,
+  gotoHarness,
+  lastError,
+  pickTokenUser,
+  pickUser,
+  useBadToken,
+  useRaw,
+  useToken,
+} from "./helpers/page";
 
 test.describe("subject token", () => {
   test.beforeEach(async () => {
@@ -45,7 +54,9 @@ test.describe("subject token", () => {
     await expectBanner(page, "off");
   });
 
-  test("a bad token keeps the last-known value and surfaces the resolver error", async ({ page }) => {
+  test("a bad token keeps the last-known value and surfaces the resolver error", async ({
+    page,
+  }) => {
     await gotoHarness(page);
     await pickUser(page, "user-anon");
     await useRaw(page);

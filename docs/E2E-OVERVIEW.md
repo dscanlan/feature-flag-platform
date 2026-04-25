@@ -45,11 +45,11 @@ pnpm --filter @ffp/e2e-web test
 
 ## Test Categories
 
-| Category | App | Runner | Coverage |
-|----------|-----|--------|----------|
-| **Node.js SDK** | e2e-node | Vitest | Server-mode SDK |
-| **Browser SDK** | e2e-web | Playwright | Real browser + network scenarios |
-| **Infrastructure** | e2e-stack | CLI | Stack startup, seeding, cleanup |
+| Category           | App       | Runner     | Coverage                         |
+| ------------------ | --------- | ---------- | -------------------------------- |
+| **Node.js SDK**    | e2e-node  | Vitest     | Server-mode SDK                  |
+| **Browser SDK**    | e2e-web   | Playwright | Real browser + network scenarios |
+| **Infrastructure** | e2e-stack | CLI        | Stack startup, seeding, cleanup  |
 
 ## E2E Stack
 
@@ -62,6 +62,7 @@ See [E2E-STACK.md](./E2E-STACK.md) for infrastructure setup details.
 See [E2E-NODE.md](./E2E-NODE.md) for details.
 
 **Verifies:**
+
 - Server-mode SDK flag evaluation
 - Subject changes
 - Subject tokens
@@ -73,6 +74,7 @@ See [E2E-NODE.md](./E2E-NODE.md) for details.
 See [E2E-WEB.md](./E2E-WEB.md) for details.
 
 **Verifies:**
+
 - Browser client flag evaluation
 - Real-time updates (SSE streaming)
 - Polling fallback
@@ -86,6 +88,7 @@ See [E2E-WEB.md](./E2E-WEB.md) for details.
 ### Adding a Test
 
 1. **Node.js test:**
+
    ```bash
    # Add file: apps/e2e-node/test/my-feature.e2e.ts
    pnpm --filter @ffp/e2e-node test my-feature
@@ -100,11 +103,13 @@ See [E2E-WEB.md](./E2E-WEB.md) for details.
 ### Debugging
 
 **Node.js:**
+
 ```bash
 pnpm --filter @ffp/e2e-node test --inspect-brk my-feature
 ```
 
 **Browser:**
+
 ```bash
 pnpm --filter @ffp/e2e-web test --debug my-feature
 # Opens Playwright inspector
@@ -113,11 +118,13 @@ pnpm --filter @ffp/e2e-web test --debug my-feature
 ### Viewing Test Results
 
 **Node.js:**
+
 ```bash
 pnpm --filter @ffp/e2e-node test --reporter=verbose
 ```
 
 **Browser:**
+
 ```bash
 pnpm --filter @ffp/e2e-web show-report
 ```
@@ -137,31 +144,40 @@ In CI environments, the test stack is started before running tests:
 ## Troubleshooting
 
 ### "Port already in use"
+
 The stack uses fixed ports (8000, 8080, 5432, 6379). Ensure nothing is running:
+
 ```bash
 # Kill existing stack
 pnpm --filter @ffp/e2e-stack stop
 ```
 
 ### "Connection refused to resolver"
+
 The stack takes a few seconds to start. Increase the sleep:
+
 ```bash
 pnpm --filter @ffp/e2e-stack start & sleep 10
 ```
 
 ### Tests hanging
+
 Check if the stack is running properly:
+
 ```bash
 docker compose -f apps/e2e-stack/.runtime/docker-compose.yml ps
 ```
 
 Restart if needed:
+
 ```bash
 pnpm --filter @ffp/e2e-stack start
 ```
 
 ### Browser test flakiness
+
 Playwright tests can be sensitive to timing. Increase timeouts in `playwright.config.ts`:
+
 ```ts
 use: {
   timeout: 30_000,  // increase from default

@@ -11,7 +11,9 @@ test.describe("cors rejection", () => {
     });
   });
 
-  test("rejecting the test origin surfaces a network error and falls back to defaults", async ({ page }) => {
+  test("rejecting the test origin surfaces a network error and falls back to defaults", async ({
+    page,
+  }) => {
     const seed = await ensureHarnessFlags();
     await seed.setCorsOrigins(["https://other.example"]);
     await seed.waitForCors(appOrigin, false);
