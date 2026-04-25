@@ -25,6 +25,9 @@ export async function setup(): Promise<void> {
     cwd: repoRoot,
     env: { ...process.env },
     stdio: ["ignore", "pipe", "pipe"],
+    // New process group so teardown can signal pnpm + node + admin-api +
+    // resolver as a tree; SIGTERM to the pnpm wrapper alone is unreliable.
+    detached: true,
   });
   stackChild.stdout?.on("data", (c: Buffer) => process.stdout.write(`[stack] ${c}`));
   stackChild.stderr?.on("data", (c: Buffer) => process.stderr.write(`[stack] ${c}`));
@@ -41,16 +44,32 @@ export async function setup(): Promise<void> {
 
 export async function teardown(): Promise<void> {
   if (!stackChild) return;
-  if (stackChild.exitCode !== null || stackChild.signalCode) return;
-  stackChild.kill("SIGTERM");
+  if (stackChild.exitCode !== null || stackChild.signalCode) {
+    stackChild = null;
+    return;
+  }
+  const pid = stackChild.pid;
+  if (pid === undefined) {
+    stackChild = null;
+    return;
+  }
+  killGroup(pid, "SIGTERM");
   await Promise.race([
     once(stackChild, "exit").catch(() => undefined),
     new Promise((resolve) => setTimeout(resolve, 10_000)),
   ]);
   if (stackChild.exitCode === null && !stackChild.signalCode) {
-    stackChild.kill("SIGKILL");
+    killGroup(pid, "SIGKILL");
   }
   stackChild = null;
+}
+
+function killGroup(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    // group already gone
+  }
 }
 
 async function stackIsHealthy(): Promise<boolean> {
