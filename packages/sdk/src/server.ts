@@ -68,7 +68,6 @@ export function createServerClient(options: ServerClientOptions): FlagClient {
     version: 0,
   };
   const stateListeners = new Set<() => void>();
-  let consecutiveFetchErrors = 0;
 
   function publish(updates: Partial<Omit<ClientSnapshot, "version">> = {}): void {
     stateSnapshot = { ...stateSnapshot, ...updates, version: stateSnapshot.version + 1 };
@@ -82,7 +81,6 @@ export function createServerClient(options: ServerClientOptions): FlagClient {
   }
 
   function recordFetchSuccess(cacheChanged: boolean): void {
-    consecutiveFetchErrors = 0;
     const updates: Partial<Omit<ClientSnapshot, "version">> = {};
     if (stateSnapshot.connectionState === "offline") {
       updates.connectionState = useStreaming ? "connecting" : "polling";
@@ -92,7 +90,6 @@ export function createServerClient(options: ServerClientOptions): FlagClient {
   }
 
   function recordFetchError(info: unknown): void {
-    consecutiveFetchErrors += 1;
     const updates: Partial<Omit<ClientSnapshot, "version">> = { error: info };
     if (stateSnapshot.connectionState !== "streaming") {
       updates.connectionState = "offline";
