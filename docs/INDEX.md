@@ -16,6 +16,13 @@
 
 - **[API Reference](./SDK-API-Reference.md)** - Complete API documentation for all SDK interfaces, types, and methods
 
+## E2E Testing
+
+- **[E2E Overview](./E2E-OVERVIEW.md)** - Architecture, prerequisites, and how the suites fit together
+- **[E2E Stack](./E2E-STACK.md)** - Shared test infrastructure (`@ffp/e2e-stack`)
+- **[E2E Node Tests](./E2E-NODE.md)** - Server-side SDK tests (`@ffp/e2e-node`)
+- **[E2E Web Tests](./E2E-WEB.md)** - Browser SDK tests (`@ffp/e2e-web`)
+
 ## Platform Documentation
 
 - **[Trust Model](./trust-model.md)** - Security architecture and trust boundaries of the platform

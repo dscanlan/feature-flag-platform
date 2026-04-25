@@ -1,496 +1,346 @@
 # E2E Web Tests
 
-The `@ffp/e2e-web` package contains end-to-end tests for the browser SDK and React provider. Tests run in real browsers using Playwright, verifying flag evaluation, real-time updates, streaming/polling, and network resilience.
+The `@ffp/e2e-web` package contains end-to-end tests for the browser SDK and
+React provider. Tests run in real Chromium via Playwright against a live
+admin-api and resolver, verifying flag evaluation, real-time updates,
+streaming/polling, and network resilience.
 
 ## Quick Start
 
 ### Prerequisites
 
-1. Start the e2e stack (in a separate terminal):
+The Playwright config declares the e2e-stack, the sidecar backend, and the
+Vite dev server as `webServer` entries — they all start automatically when
+the test suite runs. You only need to start things yourself if you want to
+reuse a long-running stack across multiple invocations (faster local iteration).
 
-   ```bash
-   pnpm --filter @ffp/e2e-stack start
-   ```
+### Run the Suite
 
-2. Run tests:
-   ```bash
-   pnpm --filter @ffp/e2e-web test
-   ```
+```bash
+pnpm --filter @ffp/e2e-web test
+```
+
+First-time setup also needs the Chromium build:
+
+```bash
+pnpm --filter @ffp/e2e-web exec playwright install --with-deps chromium
+```
 
 ### Run Specific Tests
 
 ```bash
-# Run only boolean flag tests
-pnpm --filter @ffp/e2e-web test boolean-flag
+# Run a single file
+pnpm --filter @ffp/e2e-web exec playwright test tests/boolean-flag.spec.ts
 
-# Run with verbose output
-pnpm --filter @ffp/e2e-web test -- --reporter=verbose
+# Match a test name
+pnpm --filter @ffp/e2e-web exec playwright test -g "polling"
 
-# Debug with Playwright inspector
-pnpm --filter @ffp/e2e-web test -- --debug
+# Headed (browser visible) — useful for debugging
+pnpm --filter @ffp/e2e-web exec playwright test --headed
 
-# Run headless (default) or with browser visible
-pnpm --filter @ffp/e2e-web test -- --headed
+# Step-through debug
+pnpm --filter @ffp/e2e-web exec playwright test --debug
 ```
 
 ### View Test Report
 
 ```bash
-# After tests run
-pnpm --filter @ffp/e2e-web show-report
+pnpm --filter @ffp/e2e-web exec playwright show-report
 ```
+
+The HTML report is written to `apps/e2e-web/playwright-report/` after every
+run. CI uploads that directory as the `playwright-report` artifact.
 
 ## App Architecture
 
-The e2e-web test harness includes:
+The harness in `apps/e2e-web/` consists of:
 
 ```
-┌─────────────────────────────────────────┐
-│       Playwright Test Runner            │
-├─────────────────────────────────────────┤
-│  Browser App (React + SDK/React)        │
-│  ├─ FlagsProvider (initialized by app)  │
-│  ├─ Shell (UI with flag evaluations)    │
-│  └─ Connection state display            │
-├─────────────────────────────────────────┤
-│  Sidecar Backend (Node.js)              │
-│  ├─ Subject token signing endpoint      │
-│  └─ Runtime config endpoint             │
-├─────────────────────────────────────────┤
-│  Resolver (live flag evaluation)        │
-│  Flags propagate to browser in <1s      │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Playwright (chromium project, workers=1)               │
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │ Vite dev server  127.0.0.1:5180                │     │
+│  │ React app + @ffp/sdk/react                     │     │
+│  │ ├─ FlagsProvider                               │     │
+│  │ └─ Shell (renders flag values + state)         │     │
+│  └────────────────────────────────────────────────┘     │
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │ Sidecar backend  127.0.0.1:5181                │     │
+│  │ src/backend.ts — signs subject tokens, serves  │     │
+│  │ /sidecar/runtime so the app discovers the      │     │
+│  │ resolver URL and stage public key              │     │
+│  └────────────────────────────────────────────────┘     │
+│                                                         │
+│  ┌────────────────────────────────────────────────┐     │
+│  │ e2e-stack (admin-api + resolver + Postgres +   │     │
+│  │ Redis) — see E2E-STACK.md                      │     │
+│  └────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────┘
 ```
+
+The three webServer entries in `playwright.config.ts`:
+
+| Command                                          | Port | Purpose                       |
+| ------------------------------------------------ | ---- | ----------------------------- |
+| `pnpm --filter @ffp/e2e-stack start`             | 4101 | resolver readiness probe      |
+| `pnpm --filter @ffp/e2e-web dev:sidecar`         | 5181 | subject-token signing backend |
+| `pnpm --filter @ffp/e2e-web dev:vite`            | 5180 | React harness                 |
+
+`reuseExistingServer` is `true` when `CI` is unset, so a developer who already
+has the stack running will reuse it instead of double-starting.
 
 ## Test Suites
 
-### Boolean Flag (boolean-flag.spec.ts)
+All specs live in `apps/e2e-web/tests/*.spec.ts` and share helpers from
+`tests/helpers/`.
 
-Tests boolean flag evaluation in the browser.
+### `boolean-flag.spec.ts`
 
-**Tests:**
+- `initial render reflects the disabled default`
+- `toggle via admin API updates the DOM within 1s`
 
-- **Initial render reflects the disabled default** — App shows correct initial state
-- **Toggle via admin API updates the DOM within 1s** — Flags propagate quickly
+### `json-flag.spec.ts`
 
-**Example:**
+- `json value renders and updates`
+- `mutating the returned object does not leak back into renders`
 
-```ts
-test("toggle via admin API updates the DOM within 1s", async ({ page }) => {
-  const seed = await ensureHarnessFlags();
-  await gotoHarness(page); // load the app
+### `polling-fallback.spec.ts`
 
-  // Change flag via admin API
-  const started = Date.now();
-  await seed.toggleFlag("new-checkout", true);
+- `three 5xx stream attempts switch the client to polling`
+- `while polling, changes still propagate and resume can restore streaming`
 
-  // DOM updates within 1s via streaming
-  await expectBanner(page, "on", 1_500);
-  expect(Date.now() - started).toBeLessThan(1_000);
-});
-```
+### `reconnect.spec.ts`
 
-### JSON Flag (json-flag.spec.ts)
+- `a brief offline blip reconnects without dropping the last-known flag value`
 
-Tests JSON flag evaluation and type safety.
+### `cors-rejection.spec.ts`
 
-**Tests:**
+- `rejecting the test origin surfaces a network error and falls back to defaults`
+- `resetting the allow-list to wildcard restores flag resolution`
 
-- **JSON values render correctly** — JSON flags display in the DOM
-- **Complex nested structures work** — Deep objects round-trip
-- **Type mismatches return fallback** — Wrong type → default value
+### `sse-live-update.spec.ts`
 
-### Polling Fallback (polling-fallback.spec.ts)
+- `admin-api mutation propagates to the open browser view`
+- `switching subjects does not create overlapping SSE connections`
 
-Tests graceful degradation when SSE is unavailable.
+### `subject-token.spec.ts`
 
-**Tests:**
+- `subjectToken is sent on the wire and resolves the pinned subject`
+- `the token wins over the local subject`
+- `a bad token keeps the last-known value and surfaces the resolver error`
 
-- **Falls back to polling when SSE fails** — Connection state transitions
-- **Polling still updates flags within interval** — No real-time, but still updates
-- **Recovers to SSE when available** — Dynamic reconnection works
+### `wrong-type-guard.spec.ts`
 
-**Example:**
-
-```ts
-test("falls back to polling when SSE fails", async ({ page }) => {
-  // Block SSE requests via Playwright
-  await page.route("**/sdk/stream*", (route) => route.abort());
-
-  await gotoHarness(page);
-
-  // Connection state shows polling
-  await expect(page.getByTestId("connection-state")).toHaveText("polling", { timeout: 5_000 });
-
-  // But flags still update periodically
-  const seed = await ensureHarnessFlags();
-  await seed.toggleFlag("new-checkout", true);
-
-  // Update arrives via polling (slower than SSE)
-  await expectBanner(page, "on", 30_000);
-});
-```
-
-### Reconnect (reconnect.spec.ts)
-
-Tests recovery from network disconnections.
-
-**Tests:**
-
-- **Recovers after network disconnect** — Reconnects and refetches
-- **Queued updates apply on reconnect** — No data loss
-- **Multiple disconnects don't cascade** — Robust retry logic
-
-**Example:**
-
-```ts
-test("recovers after network disconnect", async ({ page }) => {
-  await gotoHarness(page);
-
-  // Simulate network failure
-  await page.context().setOffline(true);
-  await expect(page.getByTestId("connection-state")).toHaveText("offline");
-
-  // Restore network
-  await page.context().setOffline(false);
-
-  // SDK recovers
-  await expect(page.getByTestId("connection-state")).toHaveText("streaming", { timeout: 10_000 });
-});
-```
-
-### CORS Rejection (cors-rejection.spec.ts)
-
-Tests CORS error handling.
-
-**Tests:**
-
-- **CORS error is surfaced clearly** — Error state is set
-- **App shows error message** — UX handles the error gracefully
-- **Still works with CORS-enabled resolver** — Normal case works
-
-### Real-Time Updates (sse-live-update.spec.ts)
-
-Tests real-time flag updates via SSE.
-
-**Tests:**
-
-- **Flag changes appear in <1s without page reload** — Streaming works
-- **Multiple concurrent changes propagate** — Batching works
-- **Updates survive page interactions** — No race conditions
-
-### Subject Tokens (subject-token.spec.ts)
-
-Tests signed subject token flow.
-
-**Tests:**
-
-- **Valid token is accepted** — Token auth works
-- **Bad token is rejected** — Invalid tokens fail gracefully
-- **Token overrides raw subject** — Token claims take precedence
-
-**Example:**
-
-```ts
-test("valid token is accepted", async ({ page }) => {
-  const seed = await ensureHarnessFlags();
-  await gotoHarness(page);
-
-  // Request a signed token
-  await page.getByTestId("use-token").click();
-
-  // Token is applied and flags re-evaluate
-  await expect(page.getByTestId("token-state")).toHaveText("yes", { timeout: 5_000 });
-});
-```
-
-### Wrong Type Guard (wrong-type-guard.spec.ts)
-
-Tests type safety and fallback behavior.
-
-**Tests:**
-
-- **Reading boolean flag as JSON returns fallback** — Type mismatch handled
-- **Reading JSON flag as boolean returns fallback** — Graceful degradation
-- **Console warns on type mismatch** — Developer feedback
+- `reading a JSON flag as boolean returns the default and logs WRONG_TYPE`
 
 ## Test Helpers
 
-### `gotoHarness(page, path?)`
-
-Navigate to the test app and wait for ready.
+### Stack helpers (`tests/helpers/stack.ts`)
 
 ```ts
-await gotoHarness(page); // Load app, wait for "app-ready"=yes
+import {
+  appOrigin,
+  createSeedClient,
+  ensureHarnessFlags,
+  configureCheckout,
+  configurePricing,
+} from "./helpers/stack";
 ```
 
-### `ensureHarnessFlags()`
+- `ensureHarnessFlags()` — returns a `SeedClient` bound to the harness
+  workspace + stage, with `new-checkout` (boolean) and `pricing` (JSON) flags
+  ensured.
+- `configureCheckout(seed, opts)` — set the `new-checkout` config (enabled,
+  default value, pinned subjects).
+- `configurePricing(seed, valueIndex)` — pick which `pricing` JSON value to
+  serve.
 
-Get the SeedClient for the harness workspace/stage.
+### Page helpers (`tests/helpers/page.ts`)
 
 ```ts
-const seed = await ensureHarnessFlags();
-await seed.toggleFlag("new-checkout", true);
+import {
+  gotoHarness,
+  banner,
+  pricingCard,
+  connectionState,
+  lastError,
+  expectBanner,
+  expectConnection,
+  pickUser,
+  pickTokenUser,
+  useRaw,
+  useToken,
+  useBadToken,
+} from "./helpers/page";
 ```
 
-### `expectBanner(page, state, timeout?)`
-
-Wait for the checkout banner to show "on" or "off".
-
-```ts
-await expectBanner(page, "on", 5_000); // wait up to 5s
-```
-
-### `expectConnection(page, state, timeout?)`
-
-Wait for the connection state to change.
-
-```ts
-await expectConnection(page, "streaming", 5_000);
-await expectConnection(page, "polling", 5_000);
-await expectConnection(page, "offline", 5_000);
-```
-
-### `connectionState(page)`
-
-Get the connection state locator.
-
-```ts
-const state = page.getByTestId("connection-state");
-await expect(state).toHaveText("streaming");
-```
+- `gotoHarness(page, path?)` — navigate and wait for `app-ready=yes`.
+- `expectBanner(page, "on" | "off", timeout?)` — assert the checkout banner
+  shows the expected state.
+- `expectConnection(page, "streaming" | "polling" | "offline", timeout?)` —
+  assert the SDK connection state.
+- The `pickUser`, `useToken`, `useRaw`, `useBadToken` helpers click harness
+  controls that swap the active subject / subject token.
 
 ## Test Data Elements
 
-The harness app exposes test identifiers (data-testid):
+The harness app exposes these `data-testid` attributes:
 
-| Element          | ID                 | Purpose                                  |
-| ---------------- | ------------------ | ---------------------------------------- |
-| App ready        | `app-ready`        | "yes" = ready, "no" = loading            |
-| Checkout banner  | `checkout-banner`  | "new-checkout: on" or "off"              |
-| Pricing card     | `pricing-card`     | JSON flag display                        |
-| Connection state | `connection-state` | "streaming"/"polling"/"offline"          |
-| User picker      | `user-picker`      | Change subject                           |
-| Token button     | `use-token`        | Request signed token                     |
-| Token state      | `token-state`      | "yes" = token active, "no" = raw subject |
-| Last error       | `last-error`       | Error display                            |
+| Element            | ID                  | Notes                                                       |
+| ------------------ | ------------------- | ----------------------------------------------------------- |
+| App ready          | `app-ready`         | "yes" once `FlagsProvider` reports ready                    |
+| Checkout banner    | `checkout-banner`   | "new-checkout: on" or "new-checkout: off"                   |
+| Pricing card       | `pricing-card`      | JSON flag rendering                                         |
+| Connection state   | `connection-state`  | "streaming" / "polling" / "offline"                         |
+| User picker        | `user-picker`       | Switches the local subject                                  |
+| Token user picker  | `token-user-picker` | Picks the subject the sidecar signs into the next sjt token |
+| Use raw            | `use-raw`           | Send raw subject (no token)                                 |
+| Use token          | `use-token`         | Request and apply a valid sjt- token                        |
+| Use bad token      | `use-bad-token`     | Apply an invalid token (negative test)                      |
+| Last error         | `last-error`        | Most recent error from the SDK                              |
 
 ## Debugging
 
 ### Run with Browser Visible
 
 ```bash
-pnpm --filter @ffp/e2e-web test -- --headed
+pnpm --filter @ffp/e2e-web exec playwright test --headed
 ```
 
-### Debug with Inspector
+### Step Through with the Inspector
 
 ```bash
-pnpm --filter @ffp/e2e-web test -- --debug
+pnpm --filter @ffp/e2e-web exec playwright test --debug
 ```
 
-Opens Playwright Inspector where you can step through tests.
-
-### Print Logs
+### Capture Page / Browser Logs
 
 ```ts
 test("my test", async ({ page }) => {
-  // Log page errors
-  page.on("console", (msg) => console.log(msg.text()));
-  page.on("pageerror", (err) => console.error(err));
+  page.on("console", (msg) => console.log(`[browser] ${msg.text()}`));
+  page.on("pageerror", (err) => console.error("[pageerror]", err));
 
   await gotoHarness(page);
 });
 ```
 
-### Check Network Activity
+### Trace, Screenshot, Video
 
-```ts
-test("my test", async ({ page }) => {
-  const requests = [];
-  page.on("request", (req) => {
-    if (req.url().includes("/sdk/")) {
-      requests.push(req.url());
-    }
-  });
-
-  await gotoHarness(page);
-  console.log("SDK requests:", requests);
-});
-```
-
-### Screenshot on Failure
-
-```ts
-test("my test", async ({ page }) => {
-  try {
-    await gotoHarness(page);
-  } catch (err) {
-    await page.screenshot({ path: "failure.png" });
-    throw err;
-  }
-});
-```
+The config sets `trace: "on-first-retry"`, `screenshot: "only-on-failure"`,
+`video: "retain-on-failure"`. After a failed run, look in
+`apps/e2e-web/test-results/` and `apps/e2e-web/playwright-report/` for the
+captured artifacts.
 
 ## Configuration
 
-### Playwright Config (playwright.config.ts)
-
-Key settings:
+`apps/e2e-web/playwright.config.ts`:
 
 ```ts
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "*.spec.ts",
-  fullyParallel: true,
-  workers: 4, // parallelism
-  timeout: 30_000, // per test timeout
-  expect: { timeout: 5_000 },
-  retries: 1, // retry flaky tests
+  timeout: 30_000,
+  expect: { timeout: 7_000 },
+  fullyParallel: false,
+  workers: 1,
+  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
-    baseURL: "http://localhost:5180",
+    baseURL: "http://127.0.0.1:5180",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    video: "retain-on-failure",
   },
-  webServer: {
-    command: "pnpm dev:vite & pnpm dev:sidecar",
-    port: 5180,
-    reuseExistingServer: true,
-  },
+  webServer: [
+    { command: "pnpm --filter @ffp/e2e-stack start", port: 4101, timeout: 120_000, reuseExistingServer: !process.env.CI },
+    { command: "pnpm --filter @ffp/e2e-web dev:sidecar", port: 5181, timeout: 60_000, reuseExistingServer: !process.env.CI },
+    { command: "pnpm --filter @ffp/e2e-web dev:vite", port: 5180, timeout: 60_000, reuseExistingServer: !process.env.CI },
+  ],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });
 ```
 
-### App Config (src/app.tsx)
+The suite runs serially (`workers: 1`, `fullyParallel: false`) because every
+test mutates flags on the same shared workspace + stage.
 
-The test app loads configuration from `/sidecar/runtime`:
+### App Config
 
-```ts
-interface RuntimeConfig {
-  resolverUrl: string;
-  publicKey: string;
-  users: string[];
-  pollIntervalMs: number;
-}
-```
-
-The sidecar (backend.ts) serves this based on the e2e-stack runtime.
+The Vite app fetches its runtime config from `/sidecar/runtime` (proxied to
+`127.0.0.1:5181`). The sidecar (`apps/e2e-web/src/backend.ts`) reads the
+e2e-stack runtime descriptor and serves it, plus signs subject tokens on
+request.
 
 ## Writing a New Test
 
-1. **Create test file** in `tests/my-feature.spec.ts`
-2. **Import helpers**:
+1. Add `apps/e2e-web/tests/my-feature.spec.ts`.
+2. Import helpers:
+
    ```ts
    import { expect, test } from "@playwright/test";
-   import { ensureHarnessFlags, gotoHarness } from "./helpers/stack";
-   ```
-3. **Write test**:
-
-   ```ts
-   test("my feature works", async ({ page }) => {
-     const seed = await ensureHarnessFlags();
-     await gotoHarness(page); // wait for app ready
-
-     // Use Playwright API
-     await page.getByTestId("my-button").click();
-
-     // Assert
-     await expect(page.getByTestId("result")).toHaveText("success");
-   });
+   import { configureCheckout, ensureHarnessFlags } from "./helpers/stack";
+   import { expectBanner, gotoHarness } from "./helpers/page";
    ```
 
-4. **Run**: `pnpm --filter @ffp/e2e-web test my-feature`
+3. Stage the flags in `beforeEach`, write the test, then run a single file:
+
+   ```bash
+   pnpm --filter @ffp/e2e-web exec playwright test tests/my-feature.spec.ts
+   ```
 
 Example:
 
 ```ts
-import { expect, test } from "@playwright/test";
-import { ensureHarnessFlags, gotoHarness } from "./helpers/stack";
-
 test.describe("my feature", () => {
   test.beforeEach(async () => {
     const seed = await ensureHarnessFlags();
-    // setup
+    await configureCheckout(seed, { enabled: false, defaultValueIndex: 1, disabledValueIndex: 0 });
+    await seed.setCorsOrigins(["*"]);
+    await seed.waitForBooleanFlagValue("new-checkout", false);
   });
 
-  test("works correctly", async ({ page }) => {
+  test("flag flips on toggle", async ({ page }) => {
+    const seed = await ensureHarnessFlags();
     await gotoHarness(page);
-
-    // Test your feature
-    const banner = page.getByTestId("checkout-banner");
-    await expect(banner).toContainText("new-checkout");
+    await seed.toggleFlag("new-checkout", true);
+    await expectBanner(page, "on", 1_500);
   });
 });
 ```
 
 ## Performance
 
-- **Startup**: ~10s (webpack build + stack readiness check)
-- **Per test**: ~2-5s (page load + interactions)
-- **Full suite**: ~2-3 min (4 parallel workers)
-
-To speed up:
-
-1. Run in parallel: already configured (`workers: 4`)
-2. Reduce `timeout` if tests are fast
-3. Cache browser (already done)
-4. Run subset: `pnpm --filter @ffp/e2e-web test my-feature`
+- Cold suite: ~60–90s (Vite + Chromium + stack startup)
+- Warm suite (stack already running): ~30s
 
 ## Troubleshooting
 
-### "Port 5180 already in use"
+### "Port 4101 is already used"
 
-Another process is using the port. Kill it:
-
-```bash
-lsof -i :5180
-kill -9 <PID>
-```
-
-Or change the port in `playwright.config.ts`.
-
-### "Connection refused to resolver"
-
-The e2e-stack isn't running:
+A previous stack didn't shut down cleanly. See the troubleshooting section in
+[E2E-STACK.md](./E2E-STACK.md) — typically:
 
 ```bash
-pnpm --filter @ffp/e2e-stack start
+docker compose -f apps/e2e-stack/docker-compose.e2e.yml down
+lsof -nP -iTCP:4100,4101,5180,5181 -sTCP:LISTEN
 ```
 
-### Tests timeout
+### Tests timeout waiting for the app
 
-Increase timeouts:
+Confirm the Vite server, sidecar, and stack all came up:
 
-```ts
-test("slow test", async ({ page }) => {
-  // ...
-}, 60_000); // 60 second timeout
+```bash
+lsof -nP -iTCP:5180,5181,4101 -sTCP:LISTEN
 ```
+
+If the sidecar is missing, `gotoHarness` will time out at the
+`app-ready=yes` check because the runtime fetch never resolves.
 
 ### Flaky tests
 
-Playwright tests can be timing-sensitive. To reduce flakiness:
-
-1. Use `waitFor` with longer timeouts
-2. Avoid hard waits (`sleep`)
-3. Check `expect(...).toHaveText()` with timeout
-4. Increase `retries` in config
-
-Example:
-
-```ts
-// Bad
-await page.waitForTimeout(1_000);
-expect(something).toBe(true);
-
-// Good
-await expect(page.getByTestId("ready")).toHaveText("yes", { timeout: 5_000 });
-```
-
-### App doesn't load
-
-1. Check webserver is running: `lsof -i :5180`
-2. Check logs: `docker compose ... logs resolver`
-3. Check browser console: use `page.on("console", console.log)`
+Default timeouts are conservative (`expect.timeout: 7_000`). Use
+`expectBanner(page, state, longer)` for genuinely slow assertions instead of
+raising the global timeout. Avoid `page.waitForTimeout` — use a Locator-based
+wait so Playwright's auto-retry kicks in.
 
 ## See Also
 
