@@ -1,6 +1,6 @@
 # Feature Flag Platform
 
-Self-hosted feature-flag system. See `PLAN.md` for design and `AGENT.md` for the implementation contract.
+Self-hosted feature-flag system.
 
 ## Documentation
 
