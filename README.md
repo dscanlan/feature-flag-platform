@@ -23,6 +23,14 @@ pnpm --filter admin-api dev
 
 The admin API listens on `http://localhost:4000` and the resolver on `http://localhost:4001`.
 
+### Git pre-commit hook
+
+`pnpm install` runs the repo's `prepare` script, which points `core.hooksPath`
+at `.githooks/`. The committed `pre-commit` hook runs `pnpm format:check`,
+`pnpm lint`, and `pnpm typecheck` before each commit. If any step fails, fix
+the underlying issue (or run `pnpm fix` for auto-fixable formatting/lint
+problems) and re-stage — don't bypass with `--no-verify`.
+
 ## Testing
 
 Run end-to-end tests against a live resolver. Each suite manages its own
@@ -51,6 +59,9 @@ See [E2E Testing Overview](./docs/E2E-OVERVIEW.md) for detailed instructions.
 
 ```bash
 pnpm lint              # Check code style
+pnpm lint:fix          # Auto-fix lint problems where possible
+pnpm format            # Apply prettier formatting
+pnpm fix               # format + lint:fix (covers everything pre-commit checks)
 pnpm typecheck         # TypeScript validation
 pnpm test              # Run unit + integration tests (excludes e2e-node/e2e-web)
 pnpm build             # Build all packages

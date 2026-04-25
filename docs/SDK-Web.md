@@ -62,6 +62,8 @@ interface ClientOptions {
   logger?: Logger; // custom logging function
   fetch?: typeof fetch; // custom fetch (for testing)
   streaming?: boolean; // enable SSE (default true)
+  streamIdleTimeoutMs?: number; // default 60000 — drop & reconnect if no SSE frame in this window
+  streamConnectTimeoutMs?: number; // default 10000 — handshake timeout
 }
 ```
 
