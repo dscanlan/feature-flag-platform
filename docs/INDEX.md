@@ -25,6 +25,8 @@
 
 ## Platform Documentation
 
+- **[Architecture](./ARCHITECTURE.md)** - AWS topology synthesised by the CDK stack
+- **[AWS Getting Started](./AWS-GETTING-STARTED.md)** - Punch list to turn the synth-only CDK stack into a working deployment
 - **[Trust Model](./trust-model.md)** - Security architecture and trust boundaries of the platform
 - **[Dependency Graph](./dependency-graph.mmd)** - Visual map of the workspace packages and their dependencies
 
