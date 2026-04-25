@@ -86,6 +86,8 @@ interface ClientOptions {
   logger?: Logger;
   fetch?: typeof fetch; // for testing
   streaming?: boolean; // default true
+  streamIdleTimeoutMs?: number; // default 60000 — abort & reconnect if no SSE frame in this window
+  streamConnectTimeoutMs?: number; // default 10000 — handshake timeout per attempt
 }
 ```
 
@@ -235,6 +237,8 @@ interface ServerClientOptions {
   logger?: Logger;
   fetch?: typeof fetch; // for testing
   streaming?: boolean; // default true
+  streamIdleTimeoutMs?: number; // default 60000
+  streamConnectTimeoutMs?: number; // default 10000
 }
 ```
 
@@ -257,8 +261,10 @@ const client = createServerClient({
 The server client has the same `FlagClient` interface but with these differences:
 
 - Uses `serverKey` instead of `publicKey` for authentication
-- No SSE (streaming) support — uses polling only
-- No connection state transitions (always `"polling"` or `"offline"`)
+- Resolves flags locally from a cached ruleset (`/sdk/flags`) instead of
+  per-call `/sdk/resolve` round-trips
+- Streaming is supported (SSE on `/sdk/stream`) and on by default; falls back
+  to polling on repeated 5xx responses
 
 ---
 
@@ -466,6 +472,8 @@ Built-in re-render wiring via React Context.
 - Added `ClientSnapshot` and `subscribe()` for React integration
 - Added `connectionState` tracking in browser client
 - Made `streaming` configurable (default true)
+- Added `streamIdleTimeoutMs` and `streamConnectTimeoutMs` to bound SSE
+  handshake and detect silently-dropped streams (default 10s / 60s)
 
 ### 0.1.0
 

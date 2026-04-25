@@ -51,6 +51,8 @@ interface ServerClientOptions {
   logger?: Logger; // custom logging function
   fetch?: typeof fetch; // custom fetch (for testing)
   streaming?: boolean; // enable SSE (default true)
+  streamIdleTimeoutMs?: number; // default 60000 — see "Streaming liveness" below
+  streamConnectTimeoutMs?: number; // default 10000 — handshake timeout
 }
 ```
 
@@ -275,6 +277,35 @@ async function startup() {
   }
 }
 ```
+
+## Streaming liveness
+
+When `streaming: true` (the default), the SDK opens an SSE connection to
+`/sdk/stream`. The resolver sends `event: ping` every 25s; the SDK uses two
+watchdogs to make sure a dead connection doesn't pin the client to stale data:
+
+- `streamConnectTimeoutMs` (default `10000`): bounds the initial fetch
+  handshake. A wedged connect aborts and is retried with backoff.
+- `streamIdleTimeoutMs` (default `60000`): if no frame (event _or_ ping)
+  arrives within this window, the SDK aborts the connection and reconnects.
+  This catches the "TCP keep-alive looks fine, but the server died" case
+  where `fetch` body reads neither resolve nor reject.
+
+Defaults are tuned for a healthy production network. In tests or constrained
+environments you can tighten the watchdog:
+
+```ts
+const client = createServerClient({
+  baseUrl,
+  serverKey,
+  subject: { type: "user", id: userId },
+  streamIdleTimeoutMs: 5_000, // catch a dead resolver within 5s
+});
+```
+
+Lowering `streamIdleTimeoutMs` below the resolver's 25s ping interval will
+cause periodic reconnects under healthy operation — fine for short-lived
+tests, not what you want in production.
 
 ## Error Handling
 
