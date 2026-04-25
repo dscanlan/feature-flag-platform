@@ -67,6 +67,23 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 type Logger = (level: LogLevel, msg: string, meta?: unknown) => void;
 ```
 
+## Keys & Environments
+
+Each workspace has one or more **stages** (e.g. `production`, `staging`, `development`). Every stage has its own pair of keys:
+
+- **Public key** (`pub-...`) — safe to ship in client-side code (browser, mobile). Use with `createClient`.
+- **Server key** (`srv-...`) — secret, server-side only. Use with `createServerClient`.
+
+The key you pass determines which stage's flag configuration the SDK resolves against. To target a different environment, use the key for that stage.
+
+**Where to find your keys:** In the admin UI, open your workspace and scroll to the **Stages** list. Each stage shows its Public Key and Server Key inline. The server key is only shown in full immediately after creation or rotation — copy it then.
+
+![Workspace list](images/workspace-list.png)
+
+![Stage keys panel showing Public Key and Server Key for each stage](images/workspace-stage-keys.png)
+
+---
+
 ## Browser Client
 
 ### `createClient(options: ClientOptions): FlagClient`
@@ -77,7 +94,7 @@ Create a browser client instance.
 interface ClientOptions {
   // Required
   baseUrl: string;
-  publicKey: string;
+  publicKey: string; // from the admin UI → Workspace → Stages
   subject: Subject;
 
   // Optional
@@ -229,7 +246,7 @@ Create a Node.js server client instance.
 interface ServerClientOptions {
   // Required
   baseUrl: string;
-  serverKey: string;
+  serverKey: string; // from the admin UI → Workspace → Stages (keep secret)
   subject: Subject;
 
   // Optional

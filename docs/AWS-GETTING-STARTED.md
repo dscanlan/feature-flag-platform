@@ -53,6 +53,10 @@ is fine for a first deploy but makes rollbacks fiddly.
 
 ### 4. Upload the admin UI to S3
 
+Once deployed, the admin UI is accessed via its CloudFront URL. Log in with the credentials set in `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+
+![Admin UI login screen](images/login.png)
+
 The S3 bucket is created empty. CloudFront will serve 404s until it's
 populated. Two options:
 

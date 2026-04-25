@@ -12,6 +12,10 @@ pnpm add @ffp/sdk
 
 For React apps, see [React Guide](./SDK-React.md) instead — it handles subscription and re-rendering automatically.
 
+**Finding your Public Key:** In the admin UI go to your workspace — each stage lists its Public Key (`pub-...`) inline.
+
+![Stage keys panel](images/workspace-stage-keys.png)
+
 ## Quick Start
 
 ```ts
