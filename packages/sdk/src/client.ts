@@ -57,7 +57,6 @@ export function createClient(options: ClientOptions): FlagClient {
     version: 0,
   };
   const stateListeners = new Set<() => void>();
-  let consecutiveFetchErrors = 0;
 
   function publish(updates: Partial<Omit<ClientSnapshot, "version">> = {}): void {
     snapshot = { ...snapshot, ...updates, version: snapshot.version + 1 };
@@ -124,7 +123,6 @@ export function createClient(options: ClientOptions): FlagClient {
   }
 
   function recordFetchSuccess(cacheChanged: boolean): void {
-    consecutiveFetchErrors = 0;
     const updates: Partial<Omit<ClientSnapshot, "version">> = {};
     // If we were "offline" (consecutive errors), come back to the appropriate
     // non-streaming state. Streaming is governed separately by SSE callbacks.
@@ -136,7 +134,6 @@ export function createClient(options: ClientOptions): FlagClient {
   }
 
   function recordFetchError(info: unknown): void {
-    consecutiveFetchErrors += 1;
     const updates: Partial<Omit<ClientSnapshot, "version">> = { error: info };
     // Only flip to "offline" when streaming isn't currently carrying us. If a
     // poll/resolve fails while SSE is healthy, leave state at "streaming".

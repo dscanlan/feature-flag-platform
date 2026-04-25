@@ -118,7 +118,6 @@ function Harness({ config }: { config: RuntimeConfig }) {
         const line = `[sdk:${level}] ${msg}${suffix ? ` ${suffix}` : ""}`;
         if (level === "warn") console.warn(line);
         if (level === "error") console.error(line);
-        if (level === "info" || level === "debug") console.info(line);
       },
     }),
   );

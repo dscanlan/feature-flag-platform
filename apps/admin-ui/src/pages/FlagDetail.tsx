@@ -14,7 +14,7 @@ import { api } from "../api.js";
 import { Layout } from "../components/Layout.js";
 import { RuleBuilder } from "../components/RuleBuilder.js";
 import { SubjectPicker } from "../components/SubjectPicker.js";
-import { Button, Card, CardBody, CardHeader, Field, Input, Pill } from "../components/ui.js";
+import { Button, Card, CardBody, CardHeader, Field, Pill } from "../components/ui.js";
 
 export function FlagDetail() {
   const { wsKey = "", flagKey = "" } = useParams<{ wsKey: string; flagKey: string }>();

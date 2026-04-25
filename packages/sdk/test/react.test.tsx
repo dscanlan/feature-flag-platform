@@ -239,7 +239,7 @@ describe("FlagsProvider + useFlags", () => {
         </>
       );
     }
-    let snapshots: ClientSnapshot[] = [];
+    const snapshots: ClientSnapshot[] = [];
     function Child() {
       useFlags();
       snapshots.push(client.getState());
