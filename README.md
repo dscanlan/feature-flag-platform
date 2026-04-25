@@ -9,6 +9,7 @@ Start with the [**Documentation Index**](./docs/INDEX.md) for guides on:
 - **SDK Usage**: [Node.js](./docs/SDK-Node.md), [Web/Browser](./docs/SDK-Web.md), [React](./docs/SDK-React.md)
 - **E2E Testing**: [Overview](./docs/E2E-OVERVIEW.md), [Stack](./docs/E2E-STACK.md), [Node Tests](./docs/E2E-NODE.md), [Web Tests](./docs/E2E-WEB.md)
 - **API Reference**: [Complete SDK API](./docs/SDK-API-Reference.md)
+- **Architecture**: [AWS topology](./docs/ARCHITECTURE.md), [AWS getting started](./docs/AWS-GETTING-STARTED.md)
 
 ## Local Development
 
