@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.cache
+.env
+.env.local
+.DS_Store
+*.log
+pnpm-debug.log*
+.vitest-temp
+cdk.out
+apps/e2e-stack/.runtime
+playwright-report
+test-results

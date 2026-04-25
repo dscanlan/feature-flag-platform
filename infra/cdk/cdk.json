@@ -1,0 +1,11 @@
+{
+  "app": "npx tsx src/bin.ts",
+  "watch": {
+    "include": ["src/**"],
+    "exclude": ["cdk.out", "dist", "node_modules"]
+  },
+  "context": {
+    "@aws-cdk/core:target-partitions": ["aws"],
+    "aws-cdk:enableDiffNoFail": "true"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@ffp/example-node-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "test": "echo 'no tests' && exit 0"
+  },
+  "dependencies": {
+    "@ffp/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
