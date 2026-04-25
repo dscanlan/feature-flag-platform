@@ -1,194 +1,256 @@
 # End-to-End Testing
 
-The Feature Flag Platform uses end-to-end tests to verify SDK behavior across different environments (Node.js, browser) and features (streaming, polling, tokens, etc.).
+The Feature Flag Platform uses end-to-end tests to verify SDK behavior across
+Node.js and browsers against a live admin API and resolver. There are no mocks
+in these suites — they run real flag mutations through real services.
 
 ## Test Architecture
 
-The e2e test suite consists of three parts:
+The e2e test suite is split into three workspace packages:
 
-1. **e2e-stack** — Shared test infrastructure (Docker, database, services)
-2. **e2e-node** — Node.js SDK tests (Vitest)
-3. **e2e-web** — Browser SDK tests (Playwright)
-
-All tests run against a live resolver and admin API, eliminating mocks and verifying real behavior.
+1. **`@ffp/e2e-stack`** — Shared test infrastructure. Spins up Postgres + Redis
+   via `apps/e2e-stack/docker-compose.e2e.yml`, then spawns admin-api and
+   resolver as Node child processes (admin-api on `127.0.0.1:4100`, resolver on
+   `127.0.0.1:4101`). Writes a runtime descriptor to
+   `apps/e2e-stack/.runtime/stack.json` that the other suites read.
+2. **`@ffp/e2e-node`** — Node.js SDK tests, run with Vitest. A `globalSetup`
+   helper auto-starts the stack if one isn't already healthy.
+3. **`@ffp/e2e-web`** — Browser SDK tests, run with Playwright. The Playwright
+   config declares the stack, sidecar, and Vite dev server as `webServer`
+   entries so they start automatically when the suite runs.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Docker and Docker Compose (for e2e-stack)
-- Node 23.6+
+- Docker and Docker Compose
+- Node 23.6+ (the build relies on Node's default-on TS type stripping)
 - pnpm 9
 
 ### Running Tests Locally
 
+The simplest path — let each suite manage its own stack:
+
 ```bash
-# Terminal 1: Start the test stack (runs until you stop it)
+# Node.js SDK tests (Vitest)
+pnpm --filter @ffp/e2e-node test
+
+# Browser SDK tests (Playwright)
+pnpm --filter @ffp/e2e-web test
+```
+
+Or, if you want to keep a long-running stack across multiple test invocations
+(faster iteration):
+
+```bash
+# Terminal 1 — leave this running
 pnpm --filter @ffp/e2e-stack start
 
-# Terminal 2: Run Node.js tests
-pnpm --filter @ffp/e2e-node test
-
-# Terminal 3: Run Browser tests
-pnpm --filter @ffp/e2e-web test
-```
-
-Or in one command:
-
-```bash
-# Start stack in background and run all e2e tests
-pnpm --filter @ffp/e2e-stack start &
-sleep 5
+# Terminal 2 — both suites detect the existing stack and reuse it when CI is unset
 pnpm --filter @ffp/e2e-node test
 pnpm --filter @ffp/e2e-web test
 ```
+
+Note that `pnpm test` at the repo root deliberately **excludes**
+`@ffp/e2e-node` and `@ffp/e2e-web` — they each get their own CI job so a
+half-torn-down stack from one suite doesn't collide with the other.
 
 ## Test Categories
 
-| Category           | App       | Runner     | Coverage                         |
-| ------------------ | --------- | ---------- | -------------------------------- |
-| **Node.js SDK**    | e2e-node  | Vitest     | Server-mode SDK                  |
-| **Browser SDK**    | e2e-web   | Playwright | Real browser + network scenarios |
-| **Infrastructure** | e2e-stack | CLI        | Stack startup, seeding, cleanup  |
+| Category           | App         | Runner     | Coverage                                       |
+| ------------------ | ----------- | ---------- | ---------------------------------------------- |
+| **Node.js SDK**    | `e2e-node`  | Vitest     | Server-mode SDK, restart resilience, rate limits |
+| **Browser SDK**    | `e2e-web`   | Playwright | Real browser + network scenarios                 |
+| **Infrastructure** | `e2e-stack` | CLI        | Stack startup, seeding, runtime descriptor      |
+
+`@ffp/e2e-stack` itself has no test script — it's a library + CLI consumed by
+the other two.
 
 ## E2E Stack
 
-See [E2E-STACK.md](./E2E-STACK.md) for infrastructure setup details.
+See [E2E-STACK.md](./E2E-STACK.md) for what gets started, where, and how to
+talk to it.
 
 ## Test Suites
 
 ### Node.js Tests (`@ffp/e2e-node`)
 
-See [E2E-NODE.md](./E2E-NODE.md) for details.
+See [E2E-NODE.md](./E2E-NODE.md) for full details.
 
 **Verifies:**
 
-- Server-mode SDK flag evaluation
-- Subject changes
-- Subject tokens
-- Restart resilience and recovery
-- Rate limiting behavior
+- Server-mode SDK flag evaluation (boolean, JSON, composite subjects)
+- Subject persistence in `/sdk/resolve`
+- Subject signing token (`sjt-`) flow
+- Restart resilience — SDK survives a resolver outage
+- Rate limit handling and cached-value fallback
 
 ### Browser Tests (`@ffp/e2e-web`)
 
-See [E2E-WEB.md](./E2E-WEB.md) for details.
+See [E2E-WEB.md](./E2E-WEB.md) for full details.
 
 **Verifies:**
 
-- Browser client flag evaluation
-- Real-time updates (SSE streaming)
-- Polling fallback
-- Reconnection after network failure
-- CORS handling
-- Subject tokens
-- Connection state tracking
+- Boolean and JSON flag evaluation in a real browser
+- SSE live updates from admin-api mutations
+- Polling fallback after stream failures, and resume back to streaming
+- Reconnect across short offline blips
+- CORS allow-list enforcement
+- Subject token (`sjt-`) flow on the wire
+- Wrong-type guard surfaces the default
 
 ## Development Workflow
 
 ### Adding a Test
 
-1. **Node.js test:**
+**Node.js test:**
 
-   ```bash
-   # Add file: apps/e2e-node/test/my-feature.e2e.ts
-   pnpm --filter @ffp/e2e-node test my-feature
-   ```
+```bash
+# Add file: apps/e2e-node/test/my-feature.e2e.ts
+pnpm --filter @ffp/e2e-node test my-feature
+```
 
-2. **Browser test:**
-   ```bash
-   # Add file: apps/e2e-web/tests/my-feature.spec.ts
-   pnpm --filter @ffp/e2e-web test my-feature
-   ```
+**Browser test:**
+
+```bash
+# Add file: apps/e2e-web/tests/my-feature.spec.ts
+pnpm --filter @ffp/e2e-web test my-feature
+```
 
 ### Debugging
 
 **Node.js:**
 
 ```bash
-pnpm --filter @ffp/e2e-node test --inspect-brk my-feature
+# Run a single file with verbose output
+pnpm --filter @ffp/e2e-node exec vitest run test/server-mode.e2e.ts --reporter=verbose
 ```
+
+Set `E2E_DEBUG=true` to stream resolver/host child-process output to your
+terminal.
 
 **Browser:**
 
 ```bash
-pnpm --filter @ffp/e2e-web test --debug my-feature
-# Opens Playwright inspector
+pnpm --filter @ffp/e2e-web exec playwright test --debug
+pnpm --filter @ffp/e2e-web exec playwright test --headed
 ```
 
 ### Viewing Test Results
 
-**Node.js:**
+Playwright writes an HTML report to `apps/e2e-web/playwright-report/` after
+every run. Open it directly:
 
 ```bash
-pnpm --filter @ffp/e2e-node test --reporter=verbose
+pnpm --filter @ffp/e2e-web exec playwright show-report
 ```
 
-**Browser:**
-
-```bash
-pnpm --filter @ffp/e2e-web show-report
-```
+CI uploads the same directory as a `playwright-report` artifact.
 
 ## CI/CD Integration
 
-In CI environments, the test stack is started before running tests:
+Each suite runs in its own job in `.github/workflows/ci.yml`, on a fresh
+runner, after the `build` job succeeds:
 
 ```yaml
-# Example GitHub Actions workflow
-- run: pnpm --filter @ffp/e2e-stack start &
-- run: sleep 5
-- run: pnpm --filter @ffp/e2e-node test
-- run: pnpm --filter @ffp/e2e-web test
+e2e-node:
+  runs-on: ubuntu-latest
+  needs: [build]
+  steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 23
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm --filter @ffp/e2e-node test
+
+e2e-web:
+  runs-on: ubuntu-latest
+  needs: [build]
+  steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 23
+        cache: pnpm
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm --filter @ffp/e2e-web exec playwright install --with-deps chromium
+    - run: pnpm --filter @ffp/e2e-web test
+    - if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: apps/e2e-web/playwright-report
 ```
+
+GitHub-hosted `ubuntu-latest` runners ship with Docker, so the e2e-stack's
+docker-compose containers come up without any extra setup.
 
 ## Troubleshooting
 
-### "Port already in use"
+### "Port already in use" on 4100 / 4101 / 5180 / 5181
 
-The stack uses fixed ports (8000, 8080, 5432, 6379). Ensure nothing is running:
+The stack uses fixed host ports:
+
+| Port | Service                                     |
+| ---- | ------------------------------------------- |
+| 4100 | admin-api (Node child process)              |
+| 4101 | resolver (Node child process)               |
+| 5180 | e2e-web Vite dev server (browser tests)     |
+| 5181 | e2e-web sidecar backend (subject tokens)    |
+| 5434 | Postgres (host port → container 5432)       |
+| 6381 | Redis (host port → container 6379)          |
+
+If a stack didn't shut down cleanly:
 
 ```bash
-# Kill existing stack
-pnpm --filter @ffp/e2e-stack stop
+# Find the process bound to the port
+lsof -nP -iTCP:4101 -sTCP:LISTEN
+
+# Tear down the docker-compose containers explicitly
+docker compose -f apps/e2e-stack/docker-compose.e2e.yml down
 ```
+
+The Node child processes (admin-api, resolver) are spawned by the e2e-stack
+CLI; ctrl-c'ing the foreground `pnpm --filter @ffp/e2e-stack start` is the
+intended teardown path.
 
 ### "Connection refused to resolver"
 
-The stack takes a few seconds to start. Increase the sleep:
+The stack takes ~5–10s for Postgres to become healthy and admin-api to
+migrate. If you're starting it yourself, give it time before kicking off
+tests.
+
+### Tests hanging or stuck
+
+Check what's actually running:
 
 ```bash
-pnpm --filter @ffp/e2e-stack start & sleep 10
+docker compose -f apps/e2e-stack/docker-compose.e2e.yml ps
+lsof -nP -iTCP:4100,4101 -sTCP:LISTEN
 ```
 
-### Tests hanging
-
-Check if the stack is running properly:
-
-```bash
-docker compose -f apps/e2e-stack/.runtime/docker-compose.yml ps
-```
-
-Restart if needed:
-
-```bash
-pnpm --filter @ffp/e2e-stack start
-```
+If only Postgres/Redis are up but the Node processes never came back, the
+admin-api or resolver crashed during boot — re-run with `LOG_LEVEL=debug` to
+see why.
 
 ### Browser test flakiness
 
-Playwright tests can be sensitive to timing. Increase timeouts in `playwright.config.ts`:
-
-```ts
-use: {
-  timeout: 30_000,  // increase from default
-}
-```
+Playwright tests are sensitive to timing. The default test timeout is 30s and
+expect timeout is 7s (see `apps/e2e-web/playwright.config.ts`). If you have a
+genuinely slow assertion, scope a longer timeout to that single expect rather
+than raising the global.
 
 ## Performance
 
-- **Node.js tests**: ~10-20s for full suite
-- **Browser tests**: ~1-2 min for full suite (includes startup)
-- **Stack startup**: ~10s for services to be ready
+Approximate wall-clock on a warm machine:
+
+- **Node.js suite**: ~15–20s
+- **Browser suite**: ~60–90s (includes Vite build + browser startup)
+- **Stack cold start**: ~10s (docker pull-cached, Postgres healthcheck)
 
 ## See Also
 
