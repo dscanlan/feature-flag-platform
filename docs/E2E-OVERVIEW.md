@@ -17,8 +17,8 @@ All tests run against a live resolver and admin API, eliminating mocks and verif
 ### Prerequisites
 
 - Docker and Docker Compose (for e2e-stack)
-- Node 20+
-- pnpm
+- Node 23.6+
+- pnpm 9
 
 ### Running Tests Locally
 

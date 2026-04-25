@@ -12,7 +12,7 @@ Start with the [**Documentation Index**](./docs/INDEX.md) for guides on:
 
 ## Local Development
 
-Prerequisites: Node 20+, pnpm 9, Docker.
+Prerequisites: Node 23.6+ (the build relies on Node's default-on TypeScript type stripping), pnpm 9, Docker.
 
 ```bash
 pnpm install
@@ -21,21 +21,28 @@ cp apps/admin-api/.env.example apps/admin-api/.env
 pnpm --filter admin-api dev
 ```
 
-The admin API listens on `http://localhost:4000`.
+The admin API listens on `http://localhost:4000` and the resolver on `http://localhost:4001`.
 
 ## Testing
 
-Run end-to-end tests against a live resolver:
+Run end-to-end tests against a live resolver. Each suite manages its own
+e2e-stack (Postgres + Redis via docker compose, plus admin-api and resolver as
+child processes), so you can run them independently:
 
 ```bash
-# Terminal 1: Start test infrastructure
-pnpm --filter @ffp/e2e-stack start
-
-# Terminal 2: Run Node.js SDK tests
+# Node.js SDK tests (Vitest)
 pnpm --filter @ffp/e2e-node test
 
-# Terminal 3: Run Browser SDK tests
+# Browser SDK tests (Playwright)
 pnpm --filter @ffp/e2e-web test
+```
+
+To skip the auto-managed lifecycle and reuse a long-running stack, start it in
+a separate terminal first — both runners detect a healthy stack and reuse it
+when `CI` isn't set:
+
+```bash
+pnpm --filter @ffp/e2e-stack start
 ```
 
 See [E2E Testing Overview](./docs/E2E-OVERVIEW.md) for detailed instructions.
@@ -45,7 +52,7 @@ See [E2E Testing Overview](./docs/E2E-OVERVIEW.md) for detailed instructions.
 ```bash
 pnpm lint              # Check code style
 pnpm typecheck         # TypeScript validation
-pnpm test              # Run unit tests
+pnpm test              # Run unit + integration tests (excludes e2e-node/e2e-web)
 pnpm build             # Build all packages
 pnpm graph:deps        # Generate dependency graph
 ```

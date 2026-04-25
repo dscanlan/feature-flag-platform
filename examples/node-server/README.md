@@ -8,7 +8,7 @@ the subject per request without any extra network calls.
 
 ```sh
 # 1. Set the resolver URL and a server key (srv-…) for a stage you've created.
-export RESOLVER_URL=http://localhost:8080
+export RESOLVER_URL=http://localhost:4001
 export SERVER_KEY=srv-paste-yours-here
 
 # 2. Start the server.
