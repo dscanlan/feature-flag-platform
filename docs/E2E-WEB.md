@@ -82,11 +82,11 @@ The harness in `apps/e2e-web/` consists of:
 
 The three webServer entries in `playwright.config.ts`:
 
-| Command                                          | Port | Purpose                       |
-| ------------------------------------------------ | ---- | ----------------------------- |
-| `pnpm --filter @ffp/e2e-stack start`             | 4101 | resolver readiness probe      |
-| `pnpm --filter @ffp/e2e-web dev:sidecar`         | 5181 | subject-token signing backend |
-| `pnpm --filter @ffp/e2e-web dev:vite`            | 5180 | React harness                 |
+| Command                                  | Port | Purpose                       |
+| ---------------------------------------- | ---- | ----------------------------- |
+| `pnpm --filter @ffp/e2e-stack start`     | 4101 | resolver readiness probe      |
+| `pnpm --filter @ffp/e2e-web dev:sidecar` | 5181 | subject-token signing backend |
+| `pnpm --filter @ffp/e2e-web dev:vite`    | 5180 | React harness                 |
 
 `reuseExistingServer` is `true` when `CI` is unset, so a developer who already
 has the stack running will reuse it instead of double-starting.
@@ -188,18 +188,18 @@ import {
 
 The harness app exposes these `data-testid` attributes:
 
-| Element            | ID                  | Notes                                                       |
-| ------------------ | ------------------- | ----------------------------------------------------------- |
-| App ready          | `app-ready`         | "yes" once `FlagsProvider` reports ready                    |
-| Checkout banner    | `checkout-banner`   | "new-checkout: on" or "new-checkout: off"                   |
-| Pricing card       | `pricing-card`      | JSON flag rendering                                         |
-| Connection state   | `connection-state`  | "streaming" / "polling" / "offline"                         |
-| User picker        | `user-picker`       | Switches the local subject                                  |
-| Token user picker  | `token-user-picker` | Picks the subject the sidecar signs into the next sjt token |
-| Use raw            | `use-raw`           | Send raw subject (no token)                                 |
-| Use token          | `use-token`         | Request and apply a valid sjt- token                        |
-| Use bad token      | `use-bad-token`     | Apply an invalid token (negative test)                      |
-| Last error         | `last-error`        | Most recent error from the SDK                              |
+| Element           | ID                  | Notes                                                       |
+| ----------------- | ------------------- | ----------------------------------------------------------- |
+| App ready         | `app-ready`         | "yes" once `FlagsProvider` reports ready                    |
+| Checkout banner   | `checkout-banner`   | "new-checkout: on" or "new-checkout: off"                   |
+| Pricing card      | `pricing-card`      | JSON flag rendering                                         |
+| Connection state  | `connection-state`  | "streaming" / "polling" / "offline"                         |
+| User picker       | `user-picker`       | Switches the local subject                                  |
+| Token user picker | `token-user-picker` | Picks the subject the sidecar signs into the next sjt token |
+| Use raw           | `use-raw`           | Send raw subject (no token)                                 |
+| Use token         | `use-token`         | Request and apply a valid sjt- token                        |
+| Use bad token     | `use-bad-token`     | Apply an invalid token (negative test)                      |
+| Last error        | `last-error`        | Most recent error from the SDK                              |
 
 ## Debugging
 
@@ -252,9 +252,24 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: [
-    { command: "pnpm --filter @ffp/e2e-stack start", port: 4101, timeout: 120_000, reuseExistingServer: !process.env.CI },
-    { command: "pnpm --filter @ffp/e2e-web dev:sidecar", port: 5181, timeout: 60_000, reuseExistingServer: !process.env.CI },
-    { command: "pnpm --filter @ffp/e2e-web dev:vite", port: 5180, timeout: 60_000, reuseExistingServer: !process.env.CI },
+    {
+      command: "pnpm --filter @ffp/e2e-stack start",
+      port: 4101,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "pnpm --filter @ffp/e2e-web dev:sidecar",
+      port: 5181,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "pnpm --filter @ffp/e2e-web dev:vite",
+      port: 5180,
+      timeout: 60_000,
+      reuseExistingServer: !process.env.CI,
+    },
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

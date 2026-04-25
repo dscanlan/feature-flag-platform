@@ -156,8 +156,9 @@ Set `E2E_DEBUG=true` to mirror the host's stdout/stderr to your terminal.
 
 Spawns an isolated resolver process so tests can kill/restart it or pin a low
 rate-limit budget without disturbing the shared e2e-stack resolver. Postgres
-+ Redis are still shared so the spawned resolver sees the same flag config
-the test seeded via the admin API.
+
+- Redis are still shared so the spawned resolver sees the same flag config
+  the test seeded via the admin API.
 
 ```ts
 import { spawnResolver, type ResolverHandle } from "./helpers/resolver.ts";
@@ -167,9 +168,9 @@ const resolver: ResolverHandle = await spawnResolver({
   databaseUrl,
   redisUrl,
   streamTokenSecret,
-  rateLimitRps: 5,    // optional, defaults to 10_000
+  rateLimitRps: 5, // optional, defaults to 10_000
   rateLimitBurst: 10, // optional, defaults to 10_000
-  port: 4202,         // optional, defaults to ephemeral
+  port: 4202, // optional, defaults to ephemeral
   readyTimeoutMs: 30_000,
 });
 

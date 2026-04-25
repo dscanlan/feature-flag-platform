@@ -33,6 +33,43 @@ function resolveResponse(results: ResolverResolveResponse["results"]): Response 
   });
 }
 
+/**
+ * Build an SSE Response whose body stream stays open until the caller's
+ * AbortSignal fires (or the returned `close` is invoked). Used to model the
+ * "server connection silently freezes" case the watchdog is meant to catch:
+ * the body never delivers another chunk and never closes on its own.
+ */
+function liveSseResponse(
+  initialFrames: string[],
+  signal: AbortSignal | undefined | null,
+): { response: Response; close: () => void } {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+      if (initialFrames.length > 0) {
+        const body = initialFrames.join("\n\n") + "\n\n";
+        c.enqueue(new TextEncoder().encode(body));
+      }
+    },
+  });
+  const fail = (): void => {
+    try {
+      controller?.error(new Error("aborted"));
+    } catch {
+      /* already closed */
+    }
+  };
+  signal?.addEventListener("abort", fail);
+  return {
+    response: new Response(stream, {
+      status: 200,
+      headers: { "content-type": "text/event-stream" },
+    }),
+    close: fail,
+  };
+}
+
 describe("SDK SSE wiring", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -176,6 +213,78 @@ describe("SDK SSE wiring", () => {
     await vi.advanceTimersByTimeAsync(50);
     expect(client.getState().version).toBeGreaterThan(versionAfterReady);
     expect(bumps).toBeGreaterThan(0);
+    client.close();
+  });
+
+  it("reconnects after the idle watchdog fires on a wedged stream", async () => {
+    let streamHits = 0;
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url);
+      if (u.endsWith("/sdk/resolve")) return resolveResponse({});
+      if (u.endsWith("/sdk/stream")) {
+        streamHits += 1;
+        const { response } = liveSseResponse(
+          ['event: ready\ndata: {"version":1}'],
+          init?.signal ?? null,
+        );
+        return response;
+      }
+      throw new Error(`unexpected ${u}`);
+    });
+    const client = createClient({
+      baseUrl: "http://x",
+      publicKey: "pub-test",
+      subject: { type: "user", id: "u" },
+      fetch: fetchImpl as unknown as typeof fetch,
+    });
+    await client.ready();
+    // Let the first stream connect open and the watchdog arm.
+    await vi.advanceTimersByTimeAsync(50);
+    expect(streamHits).toBe(1);
+    expect(client.getState().connectionState).toBe("streaming");
+    // Default idle timeout = 60s. Push past it; watchdog aborts, backoff
+    // (~1s for attempt=1) schedules the reconnect.
+    await vi.advanceTimersByTimeAsync(61_000);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(streamHits).toBeGreaterThanOrEqual(2);
+    client.close();
+  });
+
+  it("retries after the handshake timeout when the initial fetch wedges", async () => {
+    let streamAttempts = 0;
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url);
+      if (u.endsWith("/sdk/resolve")) return resolveResponse({});
+      if (u.endsWith("/sdk/stream")) {
+        streamAttempts += 1;
+        if (streamAttempts === 1) {
+          // First attempt: never resolves until the SDK aborts (handshake
+          // timeout). Mirrors the undici "TCP connect hangs" case.
+          return new Promise<Response>((_, reject) => {
+            init?.signal?.addEventListener("abort", () =>
+              reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+            );
+          });
+        }
+        return sseResponse(['event: ready\ndata: {"version":1}']);
+      }
+      throw new Error(`unexpected ${u}`);
+    });
+    const client = createClient({
+      baseUrl: "http://x",
+      publicKey: "pub-test",
+      subject: { type: "user", id: "u" },
+      fetch: fetchImpl as unknown as typeof fetch,
+    });
+    await client.ready();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(streamAttempts).toBe(1);
+    // Default connect timeout = 10s. Cross it, then let backoff run.
+    await vi.advanceTimersByTimeAsync(11_000);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(streamAttempts).toBeGreaterThanOrEqual(2);
+    await vi.advanceTimersByTimeAsync(50);
+    expect(client.getState().connectionState).toBe("streaming");
     client.close();
   });
 });

@@ -57,11 +57,11 @@ half-torn-down stack from one suite doesn't collide with the other.
 
 ## Test Categories
 
-| Category           | App         | Runner     | Coverage                                       |
-| ------------------ | ----------- | ---------- | ---------------------------------------------- |
+| Category           | App         | Runner     | Coverage                                         |
+| ------------------ | ----------- | ---------- | ------------------------------------------------ |
 | **Node.js SDK**    | `e2e-node`  | Vitest     | Server-mode SDK, restart resilience, rate limits |
 | **Browser SDK**    | `e2e-web`   | Playwright | Real browser + network scenarios                 |
-| **Infrastructure** | `e2e-stack` | CLI        | Stack startup, seeding, runtime descriptor      |
+| **Infrastructure** | `e2e-stack` | CLI        | Stack startup, seeding, runtime descriptor       |
 
 `@ffp/e2e-stack` itself has no test script — it's a library + CLI consumed by
 the other two.
@@ -195,14 +195,14 @@ docker-compose containers come up without any extra setup.
 
 The stack uses fixed host ports:
 
-| Port | Service                                     |
-| ---- | ------------------------------------------- |
-| 4100 | admin-api (Node child process)              |
-| 4101 | resolver (Node child process)               |
-| 5180 | e2e-web Vite dev server (browser tests)     |
-| 5181 | e2e-web sidecar backend (subject tokens)    |
-| 5434 | Postgres (host port → container 5432)       |
-| 6381 | Redis (host port → container 6379)          |
+| Port | Service                                  |
+| ---- | ---------------------------------------- |
+| 4100 | admin-api (Node child process)           |
+| 4101 | resolver (Node child process)            |
+| 5180 | e2e-web Vite dev server (browser tests)  |
+| 5181 | e2e-web sidecar backend (subject tokens) |
+| 5434 | Postgres (host port → container 5432)    |
+| 6381 | Redis (host port → container 6379)       |
 
 If a stack didn't shut down cleanly:
 

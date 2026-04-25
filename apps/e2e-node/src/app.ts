@@ -17,6 +17,12 @@ const flags = createServerClient({
   subject: { type: "user", id: "anonymous" },
   streaming: process.env.SDK_STREAMING !== "false",
   pollIntervalMs: process.env.SDK_POLL_MS ? Number(process.env.SDK_POLL_MS) : undefined,
+  streamIdleTimeoutMs: process.env.SDK_STREAM_IDLE_MS
+    ? Number(process.env.SDK_STREAM_IDLE_MS)
+    : undefined,
+  streamConnectTimeoutMs: process.env.SDK_STREAM_CONNECT_MS
+    ? Number(process.env.SDK_STREAM_CONNECT_MS)
+    : undefined,
   logger: (level, msg, meta) => {
     if (level === "warn") lastWarn = { msg, meta };
   },
