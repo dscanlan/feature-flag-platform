@@ -20,8 +20,13 @@ describe("token utilities", () => {
   it("rejects a tampered payload", () => {
     const exp = Math.floor(Date.now() / 1000) + 60;
     const token = signStreamToken(SECRET, { s: "stage-1", f: "fp-1", exp });
-    const [prefix, body] = token.split("-");
-    const [payloadB64, sig] = body!.split(".");
+    // base64url's alphabet includes "-", so split("-") over-splits when the
+    // signature happens to contain one — find the first separator only.
+    const dashIdx = token.indexOf("-");
+    const dotIdx = token.indexOf(".", dashIdx);
+    const prefix = token.slice(0, dashIdx);
+    const payloadB64 = token.slice(dashIdx + 1, dotIdx);
+    const sig = token.slice(dotIdx + 1);
     // Flip the stage id in the payload but keep the signature → must reject.
     const evil = Buffer.from(JSON.stringify({ s: "stage-2", f: "fp-1", exp })).toString(
       "base64url",
