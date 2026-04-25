@@ -10,13 +10,14 @@ The entity for which flags are evaluated.
 
 ```ts
 interface Subject {
-  type: string;  // "user", "org", "account", or custom
-  id: string;    // unique identifier
+  type: string; // "user", "org", "account", or custom
+  id: string; // unique identifier
   [key: string]: unknown; // optional attributes for rule evaluation
 }
 ```
 
 Examples:
+
 ```ts
 { type: "user", id: "user-123" }
 { type: "org", id: "org-456", tier: "enterprise" }
@@ -42,10 +43,10 @@ Immutable view of the client's lifecycle state.
 
 ```ts
 interface ClientSnapshot {
-  ready: boolean;                           // true after first successful resolve
-  error: unknown | null;                    // last SDK error (if any)
-  connectionState: ConnectionState;         // current connection status
-  version: number;                          // monotonic counter, bumps on state change
+  ready: boolean; // true after first successful resolve
+  error: unknown | null; // last SDK error (if any)
+  connectionState: ConnectionState; // current connection status
+  version: number; // monotonic counter, bumps on state change
 }
 ```
 
@@ -80,17 +81,18 @@ interface ClientOptions {
   subject: Subject;
 
   // Optional
-  subjectToken?: string;      // signed token (overrides subject for /sdk/resolve)
-  pollIntervalMs?: number;    // default 30000
+  subjectToken?: string; // signed token (overrides subject for /sdk/resolve)
+  pollIntervalMs?: number; // default 30000
   logger?: Logger;
-  fetch?: typeof fetch;       // for testing
-  streaming?: boolean;        // default true
+  fetch?: typeof fetch; // for testing
+  streaming?: boolean; // default true
 }
 ```
 
 **Returns:** `FlagClient` instance
 
 **Example:**
+
 ```ts
 import { createClient } from "@ffp/sdk/client";
 
@@ -129,7 +131,9 @@ const enabled = client.boolFlag("feature-x", false);
 Evaluate a JSON flag with type inference.
 
 ```ts
-interface Config { tier: string }
+interface Config {
+  tier: string;
+}
 const config = client.jsonFlag<Config>("config", { tier: "free" });
 ```
 
@@ -227,16 +231,17 @@ interface ServerClientOptions {
   subject: Subject;
 
   // Optional
-  pollIntervalMs?: number;    // default 30000
+  pollIntervalMs?: number; // default 30000
   logger?: Logger;
-  fetch?: typeof fetch;       // for testing
-  streaming?: boolean;        // default true
+  fetch?: typeof fetch; // for testing
+  streaming?: boolean; // default true
 }
 ```
 
 **Returns:** `FlagClient` instance (same interface as browser client)
 
 **Example:**
+
 ```ts
 import { createServerClient } from "@ffp/sdk/server";
 
@@ -267,21 +272,23 @@ Wraps your app and manages the SDK client lifecycle.
 interface FlagsProviderProps {
   client: FlagClient;
   children?: ReactNode;
-  autoReady?: boolean;      // default true
+  autoReady?: boolean; // default true
   closeOnUnmount?: boolean; // default false
 }
 ```
 
 **Example:**
+
 ```tsx
 import { FlagsProvider } from "@ffp/sdk/react";
 
 <FlagsProvider client={client}>
   <App />
-</FlagsProvider>
+</FlagsProvider>;
 ```
 
 **Behavior:**
+
 - On mount: calls `client.ready()` if `autoReady` is true
 - On unmount: calls `client.close()` if `closeOnUnmount` is true
 - Subscribes to client state changes and re-renders descendants
@@ -293,7 +300,7 @@ Read flags and SDK state. Must be inside a `<FlagsProvider>`.
 ```ts
 interface FlagsContextValue {
   ready: boolean;
-  loading: boolean;                         // opposite of ready
+  loading: boolean; // opposite of ready
   error: unknown | null;
   connectionState: ConnectionState;
   boolFlag(key: string, defaultValue: boolean): boolean;
@@ -305,6 +312,7 @@ interface FlagsContextValue {
 **Throws:** Error if used outside `<FlagsProvider>`
 
 **Example:**
+
 ```tsx
 const flags = useFlags();
 if (flags.loading) return <Spinner />;
@@ -367,8 +375,8 @@ Control polling behavior:
 ```ts
 const client = createClient({
   // ...
-  pollIntervalMs: 10000,  // check every 10 seconds (default 30)
-  streaming: false,       // disable SSE, polling only
+  pollIntervalMs: 10000, // check every 10 seconds (default 30)
+  streaming: false, // disable SSE, polling only
 });
 ```
 
@@ -415,9 +423,15 @@ if (state.error) {
 ### Event-Based (`on`)
 
 ```ts
-client.on("ready", () => { /* initial load done */ });
-client.on("change", ({ key, value }) => { /* flag changed */ });
-client.on("error", (info) => { /* fetch failed */ });
+client.on("ready", () => {
+  /* initial load done */
+});
+client.on("change", ({ key, value }) => {
+  /* flag changed */
+});
+client.on("error", (info) => {
+  /* fetch failed */
+});
 ```
 
 Suitable for vanilla JS, custom frameworks.
@@ -436,8 +450,8 @@ Framework-neutral, works with React's `useSyncExternalStore`, etc.
 ### React Hooks (`useFlags`, `useFlagClient`)
 
 ```tsx
-const flags = useFlags();  // reactive
-const client = useFlagClient();  // access for writes
+const flags = useFlags(); // reactive
+const client = useFlagClient(); // access for writes
 ```
 
 Built-in re-render wiring via React Context.

@@ -28,7 +28,9 @@ test.describe("polling fallback", () => {
     await expectConnection(page, "polling", 8_000);
   });
 
-  test("while polling, changes still propagate and resume can restore streaming", async ({ page }) => {
+  test("while polling, changes still propagate and resume can restore streaming", async ({
+    page,
+  }) => {
     const seed = await ensureHarnessFlags();
     let remainingFailures = 3;
     await page.route("**/sdk/stream", async (route) => {

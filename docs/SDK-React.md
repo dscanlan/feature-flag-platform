@@ -40,15 +40,7 @@ function Checkout() {
 
   if (flags.loading) return <p>Loading flags…</p>;
 
-  return (
-    <div>
-      {flags.boolFlag("new-checkout", false) ? (
-        <NewCheckout />
-      ) : (
-        <OldCheckout />
-      )}
-    </div>
-  );
+  return <div>{flags.boolFlag("new-checkout", false) ? <NewCheckout /> : <OldCheckout />}</div>;
 }
 ```
 
@@ -113,9 +105,9 @@ Read flags and SDK state. Must be called inside a `<FlagsProvider>`.
 ```ts
 interface FlagsContextValue {
   // State
-  ready: boolean;                   // true after initial load
-  loading: boolean;                 // opposite of ready
-  error: unknown | null;            // last SDK error
+  ready: boolean; // true after initial load
+  loading: boolean; // opposite of ready
+  error: unknown | null; // last SDK error
   connectionState: ConnectionState; // "connecting"|"streaming"|"polling"|"offline"
 
   // Flag methods
@@ -208,11 +200,7 @@ function ThemeProvider({ children }) {
     dark: false,
   });
 
-  return (
-    <ThemeContext.Provider value={theme}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
 }
 ```
 
@@ -281,21 +269,14 @@ function ConnectionIndicator() {
     connecting: { icon: "⚪", label: "Connecting" },
   }[flags.connectionState] || { icon: "?", label: "Unknown" };
 
-  return (
-    <div title={status.label}>
-      {status.icon}
-    </div>
-  );
+  return <div title={status.label}>{status.icon}</div>;
 }
 ```
 
 ### Error Boundaries
 
 ```tsx
-class FlagsErrorBoundary extends React.Component<
-  { children: ReactNode },
-  { hasError: boolean }
-> {
+class FlagsErrorBoundary extends React.Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
 
   static getDerivedStateFromError() {
@@ -337,10 +318,7 @@ function FeatureGate({ flag, children, fallback }) {
 // Usage
 function App() {
   return (
-    <FeatureGate
-      flag="new-checkout"
-      fallback={<OldCheckout />}
-    >
+    <FeatureGate flag="new-checkout" fallback={<OldCheckout />}>
       <NewCheckout />
     </FeatureGate>
   );
@@ -384,6 +362,7 @@ useFlags() must be called inside a <FlagsProvider>.
 ```
 
 Solutions:
+
 1. Move the component inside the provider tree
 2. Create a different provider higher up
 3. Use the low-level client directly (see [Web Guide](./SDK-Web.md))
@@ -414,8 +393,7 @@ test("renders with feature enabled", async () => {
   const mockClient = {
     ready: vi.fn().mockResolvedValue(undefined),
     close: vi.fn(),
-    boolFlag: (key, defaultValue) =>
-      key === "feature" ? true : defaultValue,
+    boolFlag: (key, defaultValue) => (key === "feature" ? true : defaultValue),
     jsonFlag: (key, defaultValue) => defaultValue,
     allFlags: () => ({ feature: true }),
     getSubject: () => ({ type: "user", id: "test" }),
@@ -434,7 +412,7 @@ test("renders with feature enabled", async () => {
   render(
     <FlagsProvider client={mockClient}>
       <Feature />
-    </FlagsProvider>
+    </FlagsProvider>,
   );
 
   expect(screen.getByText("New feature")).toBeInTheDocument();
@@ -453,7 +431,7 @@ test("hook returns flags", async () => {
     new Response(
       JSON.stringify({
         results: { feature: { value: true, kind: "boolean" } },
-      })
+      }),
     );
 
   const client = createClient({
@@ -463,9 +441,7 @@ test("hook returns flags", async () => {
     fetch: mockFetch,
   });
 
-  const wrapper = ({ children }) => (
-    <FlagsProvider client={client}>{children}</FlagsProvider>
-  );
+  const wrapper = ({ children }) => <FlagsProvider client={client}>{children}</FlagsProvider>;
 
   const { result } = renderHook(() => useFlags(), { wrapper });
 
@@ -491,10 +467,10 @@ function Feature() {
   const flags = useFlags();
 
   // Type-safe JSON flag
-  const config = flags.jsonFlag<AppFlags["pricing-config"]>(
-    "pricing-config",
-    { tier: "free", markup: 0 }
-  );
+  const config = flags.jsonFlag<AppFlags["pricing-config"]>("pricing-config", {
+    tier: "free",
+    markup: 0,
+  });
 
   console.log(config.tier); // ✅ type-safe
   console.log(config.unknown); // ❌ TypeScript error
@@ -504,11 +480,13 @@ function Feature() {
 ## Performance
 
 The provider is optimized for:
+
 - **One allocation per mount**: Client is passed in, not created
 - **Minimal re-renders**: Only components calling `useFlags()` re-render on state changes
 - **No context thrashing**: useSyncExternalStore prevents unnecessary provider re-renders
 
 For very large flag sets or thousands of components, consider:
+
 1. Splitting flags by feature area (multiple providers)
 2. Creating selector hooks to prevent unnecessary renders
 3. Memoizing derived values in components
@@ -518,6 +496,7 @@ For very large flag sets or thousands of components, consider:
 If you're managing client subscriptions manually:
 
 **Before:**
+
 ```tsx
 function Feature() {
   const [flags, setFlags] = useState({});
@@ -534,6 +513,7 @@ function Feature() {
 ```
 
 **After:**
+
 ```tsx
 function Feature() {
   const flags = useFlags();

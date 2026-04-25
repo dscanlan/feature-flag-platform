@@ -13,7 +13,9 @@ test.describe("reconnect", () => {
     await seed.setCorsOrigins(["*"]);
   });
 
-  test("a brief offline blip reconnects without dropping the last-known flag value", async ({ page }) => {
+  test("a brief offline blip reconnects without dropping the last-known flag value", async ({
+    page,
+  }) => {
     const seed = await ensureHarnessFlags();
     await gotoHarness(page);
     await seed.toggleFlag("new-checkout", true);

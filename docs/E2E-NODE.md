@@ -7,6 +7,7 @@ The `@ffp/e2e-node` package contains end-to-end tests for the Node.js server-sid
 ### Prerequisites
 
 1. Start the e2e stack (in a separate terminal):
+
    ```bash
    pnpm --filter @ffp/e2e-stack start
    ```
@@ -36,12 +37,14 @@ pnpm --filter @ffp/e2e-node test --inspect-brk server-mode
 Tests the fundamental behavior of the server-mode SDK.
 
 **Tests:**
+
 - **Boolean flag toggle propagates within 1s** — Verifies flag changes are picked up quickly
 - **JSON flag round-trips and reacts to default changes** — JSON values persist correctly
 - **Composite subject resolves the pinned value when present** — Subject pinning works
 - **Multiple subjects' flags resolve independently** — Subject isolation works
 
 **Example:**
+
 ```ts
 test("boolean flag toggle propagates within 1s", async () => {
   // Initial state
@@ -68,12 +71,14 @@ test("boolean flag toggle propagates within 1s", async () => {
 Tests signed subject token handling for secure subject claims.
 
 **Tests:**
+
 - **Token with valid signature is accepted** — Correct tokens work
 - **Token with invalid signature is rejected** — Tampered tokens fail
 - **Token claims override raw subject** — Token claims take precedence
 - **Bad token triggers error state** — Errors are surfaced correctly
 
 **Example:**
+
 ```ts
 test("token with valid signature is accepted", async () => {
   // Issue a valid token for a user
@@ -93,11 +98,13 @@ test("token with valid signature is accepted", async () => {
 Tests the SDK's behavior when the server restarts or reconnects.
 
 **Tests:**
+
 - **Client recovers after resolver restart** — Polling continues to work
 - **Cached flags are available before first fetch** — Cache persists
 - **Subject mutations are retried on reconnect** — No data loss
 
 **Example:**
+
 ```ts
 test("client recovers after resolver restart", async () => {
   const client = createServerClient({...});
@@ -122,11 +129,13 @@ test("client recovers after resolver restart", async () => {
 Tests rate limit handling and backoff behavior.
 
 **Tests:**
+
 - **Respects rate limit headers** — Backs off on 429 responses
 - **Retries after rate limit window** — Eventually succeeds
 - **Multiple subjects don't exceed rate limit** — Batching works
 
 **Example:**
+
 ```ts
 test("respects rate limit headers", async () => {
   const client = createServerClient({...});
@@ -183,7 +192,7 @@ describe("my test", () => {
 await waitFor(async () => {
   const value = client.boolFlag("feature", false);
   return value === true;
-}, 2_000);  // 2 second timeout
+}, 2_000); // 2 second timeout
 
 // Or check state
 const state = client.getState();
@@ -201,9 +210,7 @@ const result = await fetchJson(`http://localhost:5000/api?user=alice`);
 // With timeout
 const result = await Promise.race([
   fetchJson("..."),
-  new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("timeout")), 5_000)
-  ),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5_000)),
 ]);
 ```
 
@@ -236,7 +243,7 @@ const host = await spawnHost({
   resolverUrl: stage.resolverUrl,
   serverKey: stage.serverKey,
   publicKey: stage.publicKey,
-  env: { DEBUG: "true" },  // optional env vars
+  env: { DEBUG: "true" }, // optional env vars
 });
 
 // host.url — server base URL
@@ -253,7 +260,7 @@ Poll until a condition is true (or timeout).
 await waitFor(async () => {
   const value = client.boolFlag("feature", false);
   return value === true;
-}, 5_000);  // 5 second timeout
+}, 5_000); // 5 second timeout
 ```
 
 ### `fetchJson(url)`
@@ -286,15 +293,17 @@ describe("feature B", () => {
 ### Vitest Config
 
 See `vitest.config.ts` for:
+
 - Test environment setup
 - Global timeouts
 - Reporters
 
 Customize test settings:
+
 ```ts
 test("my test", async () => {
   // ...
-}, 10_000);  // 10 second timeout for this test
+}, 10_000); // 10 second timeout for this test
 ```
 
 ## Debugging
@@ -357,6 +366,7 @@ const client = createServerClient({
 ### "Connection refused"
 
 The e2e stack isn't running. Start it:
+
 ```bash
 pnpm --filter @ffp/e2e-stack start
 ```
@@ -364,6 +374,7 @@ pnpm --filter @ffp/e2e-stack start
 ### "Timeout waiting for..."
 
 The test exceeded its timeout. Either:
+
 1. Increase the timeout in the test: `test("...", async () => {...}, 30_000)`
 2. Check resolver logs for errors
 3. Increase wait-for timeouts in the test
@@ -371,6 +382,7 @@ The test exceeded its timeout. Either:
 ### Test flakiness
 
 Tests depend on timing (flag propagation). To reduce flakiness:
+
 1. Increase timeouts in `waitFor` calls
 2. Check resolver and database performance
 3. Verify no other processes are competing for resources
@@ -378,6 +390,7 @@ Tests depend on timing (flag propagation). To reduce flakiness:
 ### "Workspace already exists"
 
 Tests should use unique workspace keys. Update the workspace key:
+
 ```ts
 const stage = await provisionStage({
   workspaceKey: `test-${Date.now()}`,
@@ -391,6 +404,7 @@ const stage = await provisionStage({
 - **Full suite**: ~30-45s
 
 To speed up:
+
 1. Run tests in parallel: `pnpm --filter @ffp/e2e-node test --threads=4`
 2. Reduce `waitFor` timeouts if acceptable
 3. Upgrade resolver and database
@@ -409,6 +423,7 @@ To speed up:
 6. **Run**: `pnpm --filter @ffp/e2e-node test my-feature`
 
 Example:
+
 ```ts
 describe("my feature", () => {
   let stage: IsolatedStage;

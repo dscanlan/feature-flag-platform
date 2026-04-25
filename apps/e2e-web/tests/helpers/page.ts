@@ -21,7 +21,11 @@ export function lastError(page: Page): Locator {
   return page.getByTestId("last-error");
 }
 
-export async function expectBanner(page: Page, state: "on" | "off", timeout = 5_000): Promise<void> {
+export async function expectBanner(
+  page: Page,
+  state: "on" | "off",
+  timeout = 5_000,
+): Promise<void> {
   await expect(banner(page)).toHaveText(`new-checkout: ${state}`, { timeout });
 }
 

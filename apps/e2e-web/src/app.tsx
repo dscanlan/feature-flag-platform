@@ -232,10 +232,7 @@ function Shell({ config, lastError, updateLastError }: ShellProps) {
           <div style={{ ...fieldStyle, alignItems: "stretch" }}>
             <span>Subject Mode</span>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                data-testid="use-raw"
-                onClick={() => void handleUseRaw(client, setToken)}
-              >
+              <button data-testid="use-raw" onClick={() => void handleUseRaw(client, setToken)}>
                 Use Raw
               </button>
               <button
@@ -280,7 +277,10 @@ function Shell({ config, lastError, updateLastError }: ShellProps) {
         >
           <article style={cardStyle}>
             <strong>Boolean Flag</strong>
-            <div data-testid="checkout-banner" style={{ marginTop: 12, fontSize: 28, fontWeight: 700 }}>
+            <div
+              data-testid="checkout-banner"
+              style={{ marginTop: 12, fontSize: 28, fontWeight: 700 }}
+            >
               {`new-checkout: ${checkoutEnabled ? "on" : "off"}`}
             </div>
             <label
@@ -342,7 +342,9 @@ function Shell({ config, lastError, updateLastError }: ShellProps) {
               </div>
               <div>
                 connection:{" "}
-                <span data-testid="connection-state">{normalizeConnection(flags.connectionState)}</span>
+                <span data-testid="connection-state">
+                  {normalizeConnection(flags.connectionState)}
+                </span>
               </div>
               <div>
                 token active: <span data-testid="token-state">{token ? "yes" : "no"}</span>
