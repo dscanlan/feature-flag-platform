@@ -12,6 +12,10 @@ pnpm add @ffp/sdk
 
 React is a peer dependency and must be installed separately.
 
+**Finding your Public Key:** In the admin UI go to your workspace — each stage lists its Public Key (`pub-...`) inline.
+
+![Stage keys panel](images/workspace-stage-keys.png)
+
 ## Quick Start
 
 ```tsx

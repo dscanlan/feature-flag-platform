@@ -10,6 +10,10 @@ npm install @ffp/sdk
 pnpm add @ffp/sdk
 ```
 
+**Finding your Server Key:** In the admin UI go to your workspace — each stage lists its Server Key (`srv-...`) inline. Keep this secret; never ship it in client-side code.
+
+![Stage keys panel](images/workspace-stage-keys.png)
+
 ## Quick Start
 
 ```ts

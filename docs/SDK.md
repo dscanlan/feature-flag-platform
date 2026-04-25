@@ -27,6 +27,8 @@ The SDK evaluates two types of flags:
 - **Boolean flags**: `enabled = client.boolFlag("feature-name", false)`
 - **JSON flags**: `config = client.jsonFlag("config-key", defaultValue)`
 
+![Flag list and per-stage configuration](images/flag-detail-stage-config.png)
+
 ### Subjects
 
 A **subject** is the entity for which flags are evaluated (typically a user, org, or account). Subjects have:
@@ -34,6 +36,8 @@ A **subject** is the entity for which flags are evaluated (typically a user, org
 - `type`: "user", "org", "account", or custom string
 - `id`: unique identifier within that type
 - Custom attributes (e.g., tier, region) for rule evaluation
+
+![Audience detail showing subject type, members, and per-stage rules](images/audience-detail.png)
 
 ### Connection States
 
