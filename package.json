@@ -7,10 +7,13 @@
     "node": ">=23.6.0"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "./dev.sh",
     "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "fix": "pnpm format && pnpm lint:fix",
     "graph:deps": "node scripts/draw-dependency-graph.mjs",
     "typecheck": "pnpm -r --parallel typecheck",
     "test": "pnpm -r --workspace-concurrency=1 --filter '!@ffp/e2e-node' --filter '!@ffp/e2e-web' test",

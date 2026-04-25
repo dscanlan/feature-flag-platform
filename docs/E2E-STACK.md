@@ -12,10 +12,10 @@ When you run `pnpm --filter @ffp/e2e-stack start`, the CLI in
 `apps/e2e-stack/src/cli.ts` does the following, in order:
 
 1. **Brings up Docker services** via `docker compose -f docker-compose.e2e.yml
-   up -d --wait` — Postgres (host port 5434) and Redis (host port 6381).
+up -d --wait` — Postgres (host port 5434) and Redis (host port 6381).
 2. **Resets the database** by dropping and recreating the `public` schema.
 3. **Spawns admin-api** with `pnpm --filter @ffp/admin-api exec node --import
-   tsx src/server.ts`, listening on `127.0.0.1:4100`. `MIGRATE_ON_BOOT=true`
+tsx src/server.ts`, listening on `127.0.0.1:4100`. `MIGRATE_ON_BOOT=true`
    so the schema gets rebuilt.
 4. **Spawns resolver** with the equivalent command on `127.0.0.1:4101`.
 5. **Seeds** a default workspace (`e2e-web`) and stage (`playwright`) via the
@@ -176,18 +176,18 @@ interface StackRuntime {
 
 ```ts
 import {
-  adminApiUrl,        // "http://127.0.0.1:4100"
-  resolverUrl,        // "http://127.0.0.1:4101"
-  appOrigin,          // "http://127.0.0.1:5180"
-  sidecarUrl,         // "http://127.0.0.1:5181"
-  databaseUrl,        // "postgres://flags:flags@127.0.0.1:5434/flags"
-  redisUrl,           // "redis://127.0.0.1:6381/15"
-  adminEmail,         // "e2e-admin@example.com"
-  adminPassword,      // "e2e-password-123"
-  defaultWorkspaceKey,// "e2e-web"
-  defaultStageKey,    // "playwright"
-  users,              // ["user-anon", "user-pinned", "user-vip"]
-  stackTimeoutMs,     // 30_000
+  adminApiUrl, // "http://127.0.0.1:4100"
+  resolverUrl, // "http://127.0.0.1:4101"
+  appOrigin, // "http://127.0.0.1:5180"
+  sidecarUrl, // "http://127.0.0.1:5181"
+  databaseUrl, // "postgres://flags:flags@127.0.0.1:5434/flags"
+  redisUrl, // "redis://127.0.0.1:6381/15"
+  adminEmail, // "e2e-admin@example.com"
+  adminPassword, // "e2e-password-123"
+  defaultWorkspaceKey, // "e2e-web"
+  defaultStageKey, // "playwright"
+  users, // ["user-anon", "user-pinned", "user-vip"]
+  stackTimeoutMs, // 30_000
 } from "@ffp/e2e-stack";
 ```
 

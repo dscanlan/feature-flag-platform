@@ -28,11 +28,12 @@ describe("restart resilience: SDK survives a resolver outage", () => {
       resolverUrl: resolver.url,
       serverKey: stage.serverKey,
       env: {
-        // Use polling-only so reconnect after the kill is bounded by the
-        // poll interval. Streaming-mode SSE recovery is exercised by the
-        // e2e-web harness; here we focus on the bounded-recovery contract.
-        SDK_STREAMING: "false",
-        SDK_POLL_MS: "1000",
+        // Shorten the SSE idle watchdog so the SDK notices the dead socket
+        // quickly after the resolver kill. The production default (60s)
+        // exceeds this test's recovery budget. Note: this also causes the
+        // SDK to reconnect periodically under healthy ops since the resolver
+        // pings every 25s — harmless within the test's lifetime.
+        SDK_STREAM_IDLE_MS: "5000",
       },
     });
   });
@@ -65,8 +66,9 @@ describe("restart resilience: SDK survives a resolver outage", () => {
     });
 
     // Toggle through the shared admin-api → both resolvers receive the
-    // pub/sub bump. With polling enabled (1s) the SDK picks up the new
-    // ruleset on its next tick.
+    // pub/sub bump. The SDK's stream watchdog notices the dead socket,
+    // reconnects to the new resolver, and refetches /sdk/flags on the
+    // next `ready` event.
     await stage.seed.toggleFlag("new-checkout", false);
     await waitFor(async () => {
       const r = (await fetchJson(`${host.url}/?user=alice`)) as { checkout: boolean };

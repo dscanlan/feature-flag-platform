@@ -40,6 +40,15 @@ export interface ClientOptions {
   fetch?: typeof fetch;
   /** Disable SSE streaming (force polling). Default: true (streaming on). */
   streaming?: boolean;
+  /**
+   * Drop & reconnect the stream if no frame arrives within this window. The
+   * resolver pings every 25s; the SDK default (60s) leaves room for one
+   * missed heartbeat. Lower values speed up dead-connection detection at the
+   * cost of more reconnects under flaky networks. Mainly a test knob.
+   */
+  streamIdleTimeoutMs?: number;
+  /** Per-attempt SSE handshake timeout. Default 10s. Mainly a test knob. */
+  streamConnectTimeoutMs?: number;
 }
 
 export interface ServerClientOptions {
@@ -50,6 +59,10 @@ export interface ServerClientOptions {
   logger?: Logger;
   fetch?: typeof fetch;
   streaming?: boolean;
+  /** See ClientOptions.streamIdleTimeoutMs. */
+  streamIdleTimeoutMs?: number;
+  /** See ClientOptions.streamConnectTimeoutMs. */
+  streamConnectTimeoutMs?: number;
 }
 
 export interface FlagClient {

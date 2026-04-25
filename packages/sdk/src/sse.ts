@@ -12,6 +12,15 @@ import type { Logger } from "./types.js";
  *    notify the caller via `onFallback` so it can switch to polling. We then
  *    re-attempt SSE every 5 minutes (`fallbackRetryMs`).
  *  - Caller can force a re-attempt at any time by calling `tryResume()`.
+ *
+ * Liveness:
+ *  - `connectTimeoutMs` bounds the initial handshake so a wedged TCP connect
+ *    can't hang the read loop forever.
+ *  - `idleTimeoutMs` is a frame-level watchdog: if no bytes arrive within the
+ *    window, we abort and reconnect. The resolver sends `event: ping` every
+ *    25s, so the default 60s leaves room for one missed heartbeat. This is
+ *    what catches the "server died, undici keeps the read promise pending"
+ *    case (see `build/sdk-sse-reconnect-followup.md`).
  */
 export interface SseClientOptions {
   url: string;
@@ -28,6 +37,10 @@ export interface SseClientOptions {
   onOpen: () => void;
   maxBackoffMs?: number;
   fallbackRetryMs?: number;
+  /** Per-attempt handshake timeout. Default 10s. */
+  connectTimeoutMs?: number;
+  /** Drop & reconnect if no frame arrives within this window. Default 60s. */
+  idleTimeoutMs?: number;
 }
 
 export interface SseClient {
@@ -45,12 +58,16 @@ export interface SseClient {
 
 const DEFAULT_MAX_BACKOFF = 30_000;
 const DEFAULT_FALLBACK_RETRY = 5 * 60_000;
+const DEFAULT_CONNECT_TIMEOUT = 10_000;
+const DEFAULT_IDLE_TIMEOUT = 60_000;
 const SERVER_ERROR_WINDOW = 60_000;
 const SERVER_ERROR_THRESHOLD = 3;
 
 export function createSseClient(opts: SseClientOptions): SseClient {
   const maxBackoff = opts.maxBackoffMs ?? DEFAULT_MAX_BACKOFF;
   const fallbackRetry = opts.fallbackRetryMs ?? DEFAULT_FALLBACK_RETRY;
+  const connectTimeout = opts.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT;
+  const idleTimeout = opts.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT;
 
   let bearer = opts.bearer;
   let stopped = false;
@@ -113,6 +130,18 @@ export function createSseClient(opts: SseClientOptions): SseClient {
     if (stopped) return;
     abort = new AbortController();
     const ctl = abort;
+
+    // Handshake watchdog: if the initial fetch hasn't returned headers within
+    // connectTimeoutMs, abort. Tracked separately from user-initiated aborts
+    // (stop / setBearer) so the catch path knows to schedule a reconnect.
+    let handshakeTimedOut = false;
+    const handshakeTimer = setTimeout(() => {
+      if (ctl.signal.aborted) return;
+      handshakeTimedOut = true;
+      opts.logger("warn", `sse: handshake timeout after ${connectTimeout}ms`);
+      ctl.abort();
+    }, connectTimeout);
+
     let res: Response;
     try {
       res = await opts.fetchImpl(opts.url, {
@@ -124,12 +153,18 @@ export function createSseClient(opts: SseClientOptions): SseClient {
         signal: ctl.signal,
       });
     } catch (err) {
-      if (stopped || ctl.signal.aborted) return;
+      clearTimeout(handshakeTimer);
+      if (stopped) return;
+      // User-initiated abort (stop / setBearer): they've already arranged for
+      // the next step. Handshake timeout looks like an abort too — fall
+      // through so we schedule the reconnect.
+      if (ctl.signal.aborted && !handshakeTimedOut) return;
       attempt += 1;
       opts.logger("warn", "sse: connect failed", err);
       scheduleConnect(backoffMs());
       return;
     }
+    clearTimeout(handshakeTimer);
 
     if (!res.ok || !res.body) {
       const status = res.status;
@@ -163,6 +198,21 @@ export function createSseClient(opts: SseClientOptions): SseClient {
       }
     }
 
+    // Idle watchdog: covers the undici case where the server dies mid-stream
+    // and `reader.read()` neither resolves nor rejects. Re-armed on every
+    // chunk; firing aborts the controller, which makes the read reject.
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const armIdle = (): void => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        idleTimer = null;
+        if (ctl.signal.aborted) return;
+        opts.logger("warn", `sse: no frames in ${idleTimeout}ms, dropping`);
+        ctl.abort();
+      }, idleTimeout);
+    };
+    armIdle();
+
     const reader = res.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buf = "";
@@ -170,6 +220,7 @@ export function createSseClient(opts: SseClientOptions): SseClient {
       while (!stopped) {
         const { value, done } = await reader.read();
         if (done) break;
+        armIdle();
         buf += decoder.decode(value, { stream: true });
         let nl: number;
         while ((nl = buf.indexOf("\n\n")) !== -1) {
@@ -181,6 +232,11 @@ export function createSseClient(opts: SseClientOptions): SseClient {
     } catch (err) {
       if (!stopped && !ctl.signal.aborted) {
         opts.logger("debug", "sse: read error", err);
+      }
+    } finally {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
       }
     }
     if (!stopped) {

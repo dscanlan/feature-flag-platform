@@ -188,6 +188,8 @@ export function createServerClient(options: ServerClientOptions): FlagClient {
       bearer: options.serverKey,
       fetchImpl,
       logger: log,
+      idleTimeoutMs: options.streamIdleTimeoutMs,
+      connectTimeoutMs: options.streamConnectTimeoutMs,
       onEvent: (event) => {
         if (event === "change" || event === "ready") void fetchOnce();
       },
