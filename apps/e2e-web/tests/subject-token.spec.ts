@@ -57,7 +57,7 @@ test.describe("subject token", () => {
   test("a bad token keeps the last-known value and surfaces the resolver error", async ({
     page,
   }) => {
-    await gotoHarness(page);
+    await gotoHarness(page, "/?instrument=fetch");
     await pickUser(page, "user-anon");
     await useRaw(page);
     await expectBanner(page, "on");

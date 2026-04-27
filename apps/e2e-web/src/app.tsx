@@ -83,6 +83,16 @@ function Harness({ config }: { config: RuntimeConfig }) {
     setLastError((prev) => (prev === "none" || value !== "none" ? value : prev));
   }, []);
 
+  // Tests that need to assert on `last-error` opt in via ?instrument=fetch.
+  // The default path passes no `fetch`, so the SDK falls back to the global
+  // — the shape real apps ship with. Exercising that path is what catches
+  // regressions like the Chromium "Illegal invocation" bug from passing a
+  // bare global fetch through method-call indirection in sse.ts.
+  const instrumented = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("instrument") === "fetch";
+  }, []);
+
   const wrappedFetch = useMemo<typeof fetch>(() => {
     return async (input, init) => {
       const url =
@@ -112,7 +122,7 @@ function Harness({ config }: { config: RuntimeConfig }) {
       publicKey: config.publicKey,
       subject: { type: "user", id: config.users[0] ?? "user-anon" },
       pollIntervalMs: config.pollIntervalMs,
-      fetch: wrappedFetch,
+      ...(instrumented ? { fetch: wrappedFetch } : {}),
       logger(level, msg, meta) {
         const suffix = formatMeta(meta);
         const line = `[sdk:${level}] ${msg}${suffix ? ` ${suffix}` : ""}`;
