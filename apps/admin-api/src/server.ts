@@ -4,7 +4,7 @@ import { loadConfig } from "./config.js";
 import { runMigrations } from "./db/migrate.js";
 import { createPool } from "./db/pool.js";
 import { createRedis } from "./db/redis.js";
-import { seedAdminUser } from "./db/seed.js";
+import { seedAdminUser, seedDevSampleData } from "./db/seed.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -17,6 +17,7 @@ async function main(): Promise<void> {
     await runMigrations(config, bootLogger);
   }
   await seedAdminUser(pool, config, bootLogger);
+  await seedDevSampleData(pool, config, bootLogger);
 
   const app = await buildApp({ config, pool, redis });
   await app.listen({ port: config.PORT, host: "0.0.0.0" });

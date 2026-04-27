@@ -22,6 +22,7 @@
 - **[E2E Stack](./E2E-STACK.md)** - Shared test infrastructure (`@ffp/e2e-stack`)
 - **[E2E Node Tests](./E2E-NODE.md)** - Server-side SDK tests (`@ffp/e2e-node`)
 - **[E2E Web Tests](./E2E-WEB.md)** - Browser SDK tests (`@ffp/e2e-web`)
+- **[E2E Admin UI Tests](./E2E-ADMIN-UI.md)** - Admin UI browser tests (`@ffp/admin-ui-e2e`)
 
 ## Platform Documentation
 

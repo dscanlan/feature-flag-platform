@@ -7,7 +7,7 @@ Self-hosted feature-flag system.
 Start with the [**Documentation Index**](./docs/INDEX.md) for guides on:
 
 - **SDK Usage**: [Node.js](./docs/SDK-Node.md), [Web/Browser](./docs/SDK-Web.md), [React](./docs/SDK-React.md)
-- **E2E Testing**: [Overview](./docs/E2E-OVERVIEW.md), [Stack](./docs/E2E-STACK.md), [Node Tests](./docs/E2E-NODE.md), [Web Tests](./docs/E2E-WEB.md)
+- **E2E Testing**: [Overview](./docs/E2E-OVERVIEW.md), [Stack](./docs/E2E-STACK.md), [Node Tests](./docs/E2E-NODE.md), [Web Tests](./docs/E2E-WEB.md), [Admin UI Tests](./docs/E2E-ADMIN-UI.md)
 - **API Reference**: [Complete SDK API](./docs/SDK-API-Reference.md)
 - **Architecture**: [AWS topology](./docs/ARCHITECTURE.md), [AWS getting started](./docs/AWS-GETTING-STARTED.md)
 
@@ -19,10 +19,27 @@ Prerequisites: Node 23.6+ (the build relies on Node's default-on TypeScript type
 pnpm install
 docker compose up -d
 cp apps/admin-api/.env.example apps/admin-api/.env
-pnpm --filter admin-api dev
+./dev.sh                     # starts admin-api, resolver, admin-ui together
 ```
 
-The admin API listens on `http://localhost:4000` and the resolver on `http://localhost:4001`.
+The admin API listens on `http://localhost:4000`, the resolver on
+`http://localhost:4001`, and the admin UI on `http://localhost:5173`.
+
+### Seeded sample data
+
+When `NODE_ENV=development` and the database is empty, admin-api seeds a
+`default` workspace on first boot with three stages (Production, Staging,
+Development), three subject types (User, Account, Device), four audiences
+with members and rules, and a handful of subjects so the admin UI has
+something to render. The seed is idempotent — it skips entirely once the
+workspace exists, so editing flags through the UI is safe. To get a fresh
+seed, drop the dev database and restart:
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+The seed lives at `apps/admin-api/src/db/seed.ts` (`seedDevSampleData`).
 
 ### Git pre-commit hook
 
@@ -44,6 +61,9 @@ pnpm --filter @ffp/e2e-node test
 
 # Browser SDK tests (Playwright)
 pnpm --filter @ffp/e2e-web test
+
+# Admin UI browser tests (Playwright)
+pnpm --filter @ffp/admin-ui-e2e test
 ```
 
 To skip the auto-managed lifecycle and reuse a long-running stack, start it in
