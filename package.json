@@ -16,7 +16,7 @@
     "fix": "pnpm format && pnpm lint:fix",
     "graph:deps": "node scripts/draw-dependency-graph.mjs",
     "typecheck": "pnpm -r --parallel typecheck",
-    "test": "pnpm -r --workspace-concurrency=1 --filter '!@ffp/e2e-node' --filter '!@ffp/e2e-web' test",
+    "test": "pnpm -r --workspace-concurrency=1 --filter '!@ffp/e2e-node' --filter '!@ffp/e2e-web' --filter '!@ffp/admin-ui-e2e' test",
     "build": "pnpm -r --parallel build"
   },
   "devDependencies": {
