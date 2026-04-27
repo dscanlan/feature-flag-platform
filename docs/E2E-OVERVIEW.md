@@ -6,7 +6,7 @@ in these suites — they run real flag mutations through real services.
 
 ## Test Architecture
 
-The e2e test suite is split into three workspace packages:
+The e2e test suite is split into four workspace packages:
 
 1. **`@ffp/e2e-stack`** — Shared test infrastructure. Spins up Postgres + Redis
    via `apps/e2e-stack/docker-compose.e2e.yml`, then spawns admin-api and
@@ -18,6 +18,10 @@ The e2e test suite is split into three workspace packages:
 3. **`@ffp/e2e-web`** — Browser SDK tests, run with Playwright. The Playwright
    config declares the stack, sidecar, and Vite dev server as `webServer`
    entries so they start automatically when the suite runs.
+4. **`@ffp/admin-ui-e2e`** — Admin UI browser tests, run with Playwright.
+   Drives the admin UI through real browser flows (login, flag CRUD, toggle)
+   against the e2e-stack admin-api. Reuses `@ffp/e2e-stack` so it shares
+   infrastructure with the SDK suites.
 
 ## Getting Started
 
@@ -37,6 +41,9 @@ pnpm --filter @ffp/e2e-node test
 
 # Browser SDK tests (Playwright)
 pnpm --filter @ffp/e2e-web test
+
+# Admin UI browser tests (Playwright)
+pnpm --filter @ffp/admin-ui-e2e test
 ```
 
 Or, if you want to keep a long-running stack across multiple test invocations
@@ -46,22 +53,24 @@ Or, if you want to keep a long-running stack across multiple test invocations
 # Terminal 1 — leave this running
 pnpm --filter @ffp/e2e-stack start
 
-# Terminal 2 — both suites detect the existing stack and reuse it when CI is unset
+# Terminal 2 — every suite detects the existing stack and reuses it when CI is unset
 pnpm --filter @ffp/e2e-node test
 pnpm --filter @ffp/e2e-web test
+pnpm --filter @ffp/admin-ui-e2e test
 ```
 
 Note that `pnpm test` at the repo root deliberately **excludes**
-`@ffp/e2e-node` and `@ffp/e2e-web` — they each get their own CI job so a
-half-torn-down stack from one suite doesn't collide with the other.
+`@ffp/e2e-node`, `@ffp/e2e-web`, and `@ffp/admin-ui-e2e` — each gets its own
+CI job so a half-torn-down stack from one suite doesn't collide with another.
 
 ## Test Categories
 
-| Category           | App         | Runner     | Coverage                                         |
-| ------------------ | ----------- | ---------- | ------------------------------------------------ |
-| **Node.js SDK**    | `e2e-node`  | Vitest     | Server-mode SDK, restart resilience, rate limits |
-| **Browser SDK**    | `e2e-web`   | Playwright | Real browser + network scenarios                 |
-| **Infrastructure** | `e2e-stack` | CLI        | Stack startup, seeding, runtime descriptor       |
+| Category           | App            | Runner     | Coverage                                         |
+| ------------------ | -------------- | ---------- | ------------------------------------------------ |
+| **Node.js SDK**    | `e2e-node`     | Vitest     | Server-mode SDK, restart resilience, rate limits |
+| **Browser SDK**    | `e2e-web`      | Playwright | Real browser + network scenarios                 |
+| **Admin UI**       | `admin-ui-e2e` | Playwright | Login, flag CRUD, toggle persistence             |
+| **Infrastructure** | `e2e-stack`    | CLI        | Stack startup, seeding, runtime descriptor       |
 
 `@ffp/e2e-stack` itself has no test script — it's a library + CLI consumed by
 the other two.
@@ -98,6 +107,18 @@ See [E2E-WEB.md](./E2E-WEB.md) for full details.
 - CORS allow-list enforcement
 - Subject token (`sjt-`) flow on the wire
 - Wrong-type guard surfaces the default
+- Cross-origin SSE handshake against `directResolverUrl` (catches missing
+  ACAO on the stream response and unbound `fetch` in the SDK)
+
+### Admin UI Tests (`@ffp/admin-ui-e2e`)
+
+See [E2E-ADMIN-UI.md](./E2E-ADMIN-UI.md) for full details.
+
+**Verifies:**
+
+- Login page rejects bad credentials and surfaces the resolver error
+- Good credentials redirect to `/workspaces` and the cookie survives reload
+- A flag can be created, toggled on, and the change persists across reload
 
 ## Development Workflow
 
@@ -186,6 +207,9 @@ e2e-web:
         path: apps/e2e-web/playwright-report
 ```
 
+An equivalent `e2e-admin-ui` job runs the admin-ui-e2e suite the same way,
+uploading its report as `playwright-report-admin-ui`.
+
 GitHub-hosted `ubuntu-latest` runners ship with Docker, so the e2e-stack's
 docker-compose containers come up without any extra setup.
 
@@ -201,6 +225,7 @@ The stack uses fixed host ports:
 | 4101 | resolver (Node child process)            |
 | 5180 | e2e-web Vite dev server (browser tests)  |
 | 5181 | e2e-web sidecar backend (subject tokens) |
+| 5183 | admin-ui-e2e Vite dev server             |
 | 5434 | Postgres (host port → container 5432)    |
 | 6381 | Redis (host port → container 6379)       |
 
