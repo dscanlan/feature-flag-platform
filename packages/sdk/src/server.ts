@@ -46,7 +46,7 @@ export function createServerClient(options: ServerClientOptions): FlagClient {
     throw new Error("serverKey is required for createServerClient");
   }
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
-  const fetchImpl = options.fetch ?? fetch;
+  const fetchImpl = options.fetch ?? fetch.bind(globalThis);
   const log = options.logger ?? noopLogger;
   const pollMs = Math.max(MIN_POLL_MS, options.pollIntervalMs ?? DEFAULT_POLL_MS);
   const useStreaming = options.streaming !== false;

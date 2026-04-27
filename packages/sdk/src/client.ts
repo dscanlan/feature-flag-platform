@@ -30,7 +30,10 @@ export function createClient(options: ClientOptions): FlagClient {
     );
   }
   const baseUrl = options.baseUrl.replace(/\/+$/, "");
-  const fetchImpl = options.fetch ?? fetch;
+  // Bind to globalThis so the receiver is preserved when fetchImpl is later
+  // invoked as a method on another object (e.g. opts.fetchImpl in sse.ts).
+  // Chromium's window.fetch throws "Illegal invocation" if `this` isn't Window.
+  const fetchImpl = options.fetch ?? fetch.bind(globalThis);
   const log = options.logger ?? noopLogger;
   const pollMs = Math.max(MIN_POLL_MS, options.pollIntervalMs ?? DEFAULT_POLL_MS);
   const useStreaming = options.streaming !== false;
