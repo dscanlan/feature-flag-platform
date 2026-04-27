@@ -18,7 +18,7 @@ test.describe("cors rejection", () => {
     await seed.setCorsOrigins(["https://other.example"]);
     await seed.waitForCors(appOrigin, false);
 
-    await gotoHarness(page, "/?transport=direct");
+    await gotoHarness(page, "/?transport=direct&instrument=fetch");
 
     await expect(lastError(page)).toContainText("NETWORK_ERROR", { timeout: 10_000 });
     await expectBanner(page, "off");
