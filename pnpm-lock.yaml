@@ -130,6 +130,31 @@ importers:
         specifier: ^5.3.4
         version: 5.4.21(@types/node@20.19.39)
 
+  apps/admin-ui-e2e:
+    dependencies:
+      "@ffp/admin-ui":
+        specifier: workspace:*
+        version: link:../admin-ui
+      "@ffp/e2e-stack":
+        specifier: workspace:*
+        version: link:../e2e-stack
+      "@ffp/shared-types":
+        specifier: workspace:*
+        version: link:../../packages/shared-types
+    devDependencies:
+      "@playwright/test":
+        specifier: ^1.55.0
+        version: 1.59.1
+      "@types/node":
+        specifier: ^20.14.10
+        version: 20.19.39
+      tsx:
+        specifier: ^4.16.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.5.3
+        version: 5.9.3
+
   apps/e2e-node:
     dependencies:
       "@ffp/e2e-stack":

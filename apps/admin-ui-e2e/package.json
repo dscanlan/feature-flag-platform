@@ -1,0 +1,21 @@
+{
+  "name": "@ffp/admin-ui-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@ffp/admin-ui": "workspace:*",
+    "@ffp/e2e-stack": "workspace:*",
+    "@ffp/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^20.14.10",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3"
+  }
+}
