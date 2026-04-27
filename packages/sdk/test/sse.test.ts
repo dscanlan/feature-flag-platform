@@ -287,4 +287,42 @@ describe("SDK SSE wiring", () => {
     expect(client.getState().connectionState).toBe("streaming");
     client.close();
   });
+
+  // Regression: when no custom `fetch` is passed, the SDK fell back to the
+  // global `fetch` without binding it. SSE then invoked it as
+  // `opts.fetchImpl(...)`, setting `this` to the options bag. Chromium's
+  // window.fetch rejects that with "Illegal invocation" — silently breaking
+  // streaming for any browser app using the default fetch.
+  it("uses the default global fetch even when invoked via a method call", async () => {
+    const calls: string[] = [];
+    const original = globalThis.fetch;
+    const stub = function (this: unknown, url: string | URL | Request) {
+      // Mimic Chromium's receiver check on window.fetch.
+      if (this !== globalThis && this !== undefined) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+      }
+      const u = String(url);
+      calls.push(u);
+      if (u.endsWith("/sdk/resolve")) return Promise.resolve(resolveResponse({}));
+      if (u.endsWith("/sdk/stream")) {
+        return Promise.resolve(sseResponse(['event: ready\ndata: {"version":1}']));
+      }
+      return Promise.reject(new Error(`unexpected ${u}`));
+    };
+    globalThis.fetch = stub as unknown as typeof fetch;
+    try {
+      const client = createClient({
+        baseUrl: "http://x",
+        publicKey: "pub-test",
+        subject: { type: "user", id: "u" },
+      });
+      await client.ready();
+      await vi.advanceTimersByTimeAsync(50);
+      expect(calls.some((u) => u.endsWith("/sdk/stream"))).toBe(true);
+      expect(client.getState().connectionState).toBe("streaming");
+      client.close();
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
 });

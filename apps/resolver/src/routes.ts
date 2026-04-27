@@ -184,12 +184,15 @@ export function registerSdkRoutes(
 
   app.get("/sdk/stream", { preHandler: [requireStreamAuth, rateLimitHook] }, async (req, reply) => {
     const ruleset = req.ruleset!;
-    reply.raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
+    // Set headers via reply so @fastify/cors's onSend hook can attach
+    // Access-Control-Allow-Origin etc. Then hijack and flush so we own the
+    // socket for the lifetime of the stream.
+    reply.header("Content-Type", "text/event-stream");
+    reply.header("Cache-Control", "no-cache, no-transform");
+    reply.header("Connection", "keep-alive");
+    reply.header("X-Accel-Buffering", "no");
+    reply.hijack();
+    reply.raw.writeHead(200, reply.getHeaders() as Record<string, string | string[]>);
     const send = (event: string, data: unknown): void => {
       reply.raw.write(`event: ${event}\n`);
       reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
