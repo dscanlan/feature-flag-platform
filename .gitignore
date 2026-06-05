@@ -11,6 +11,10 @@ coverage
 pnpm-debug.log*
 .vitest-temp
 cdk.out
+infra/cdk/cdk.context.json
 apps/e2e-stack/.runtime
 playwright-report
 test-results
+
+# Per-user local Claude Code settings (never commit)
+.claude/settings.local.json

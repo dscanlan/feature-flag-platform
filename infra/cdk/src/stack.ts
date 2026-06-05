@@ -63,10 +63,43 @@ export class FfpStack extends Stack {
       },
     });
 
+    // Bootstrap admin password — admin-api requires ADMIN_EMAIL + ADMIN_PASSWORD
+    // and has no defaults. Generated once; read it from Secrets Manager to log
+    // in for the first time, then rotate / disable via the UI.
+    const adminPasswordSecret = new secretsmanager.Secret(this, "AdminPassword", {
+      description: "Bootstrap admin user password",
+      generateSecretString: {
+        secretStringTemplate: "{}",
+        generateStringKey: "value",
+        excludePunctuation: true,
+        passwordLength: 24,
+      },
+    });
+
+    // Shared HMAC key for resolver stream-subscription tokens. Must be shared
+    // across resolver tasks (there are 2) or a token signed by one task fails
+    // validation on another; without it tokens also die on every restart.
+    const streamTokenSecret = new secretsmanager.Secret(this, "StreamTokenSecret", {
+      description: "Resolver stream-token HMAC key",
+      generateSecretString: {
+        secretStringTemplate: "{}",
+        generateStringKey: "value",
+        excludePunctuation: true,
+        passwordLength: 64,
+      },
+    });
+
+    // Non-sensitive; override at synth with `-c adminEmail=you@example.com`.
+    const adminEmail = (this.node.tryGetContext("adminEmail") as string) ?? "admin@example.com";
+
     // ── RDS Postgres (single-AZ v1). ──────────────────────────────────────
     const dbSg = new ec2.SecurityGroup(this, "DbSg", { vpc, allowAllOutbound: false });
     const db = new rds.DatabaseInstance(this, "Db", {
-      engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_16_3 }),
+      // 16.3 was deprecated in some regions (e.g. eu-north-1). Pin to a current
+      // minor via .of() so we don't depend on the CDK enum carrying it.
+      engine: rds.DatabaseInstanceEngine.postgres({
+        version: rds.PostgresEngineVersion.of("16.9", "16"),
+      }),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
@@ -115,8 +148,20 @@ export class FfpStack extends Stack {
       REDIS_URL: `redis://${redis.attrRedisEndpointAddress}:${redis.attrRedisEndpointPort}`,
     };
 
+    // Postgres connection coordinates. The password arrives separately as an
+    // ecs.Secret (DB_PASSWORD); everything else is non-sensitive and shared by
+    // both services.
+    const dbEnv = {
+      DB_HOST: db.dbInstanceEndpointAddress,
+      DB_PORT: db.dbInstanceEndpointPort,
+      DB_NAME: "flags",
+      DB_USER: "flags",
+    };
+
     const dbUrlSecret = ecs.Secret.fromSecretsManager(dbSecret, "password");
     const cookieSecretEcs = ecs.Secret.fromSecretsManager(cookieSecret, "value");
+    const adminPasswordEcs = ecs.Secret.fromSecretsManager(adminPasswordSecret, "value");
+    const streamTokenEcs = ecs.Secret.fromSecretsManager(streamTokenSecret, "value");
 
     // ── Admin API: ECS Fargate behind an INTERNAL ALB. ────────────────────
     const adminApi = new ecs_patterns.ApplicationLoadBalancedFargateService(this, "AdminApi", {
@@ -131,10 +176,11 @@ export class FfpStack extends Stack {
       taskImageOptions: {
         image: ecs.ContainerImage.fromEcrRepository(adminApiRepo, "latest"),
         containerPort: 4000,
-        environment: { ...commonEnv, MIGRATE_ON_BOOT: "true" },
+        environment: { ...commonEnv, ...dbEnv, MIGRATE_ON_BOOT: "true", ADMIN_EMAIL: adminEmail },
         secrets: {
           DB_PASSWORD: dbUrlSecret,
           COOKIE_SECRET: cookieSecretEcs,
+          ADMIN_PASSWORD: adminPasswordEcs,
         },
       },
     });
@@ -157,9 +203,10 @@ export class FfpStack extends Stack {
       taskImageOptions: {
         image: ecs.ContainerImage.fromEcrRepository(resolverRepo, "latest"),
         containerPort: 4001,
-        environment: { ...commonEnv, SAFETY_POLL_MS: "60000" },
+        environment: { ...commonEnv, ...dbEnv, SAFETY_POLL_MS: "60000" },
         secrets: {
           DB_PASSWORD: dbUrlSecret,
+          STREAM_TOKEN_SECRET: streamTokenEcs,
         },
       },
     });

@@ -1,0 +1,18 @@
+# Keep the build context small and force a linux-native install inside the image.
+**/node_modules
+**/dist
+.git
+.pnpm-store
+infra/cdk/cdk.out
+infra/cdk/dist
+
+# Test / docs / local-only material not needed to build or run the services.
+apps/e2e-node
+apps/e2e-web
+apps/admin-ui-e2e
+apps/e2e-stack
+examples
+docs
+build
+**/*.test.ts
+**/vitest.config.ts

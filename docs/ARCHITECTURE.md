@@ -44,22 +44,34 @@ optimisation for v1):
 | `private` (with egress) | Fargate tasks; reach AWS APIs / ECR via NAT                    |
 | `isolated`              | RDS and Redis; no internet path, reachable only via SG ingress |
 
-### Secrets — `DbSecret`, `CookieSecret`
+### Secrets — `DbSecret`, `CookieSecret`, `AdminPassword`, `StreamTokenSecret`
 
 Auto-generated in Secrets Manager and injected into ECS tasks as
 `ecs.Secret` references, so values never appear in CloudFormation
 parameters or task-definition JSON.
 
 - `DbSecret` — Postgres user/password. Wired into RDS via
-  `Credentials.fromSecret`.
+  `Credentials.fromSecret`, and injected into both services as
+  `DB_PASSWORD`. The container entrypoint assembles `DATABASE_URL` from
+  this plus the plain `DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER` env vars, so
+  the password never lands in the plaintext task definition (the apps read
+  a single `DATABASE_URL` — see [AWS-DEPLOY.md](./AWS-DEPLOY.md)).
 - `CookieSecret` — admin-api session-cookie HMAC key.
+- `AdminPassword` — bootstrap admin-user password (admin-api requires
+  `ADMIN_EMAIL` + `ADMIN_PASSWORD` and has no defaults). `ADMIN_EMAIL` is a
+  plain env var, overridable at synth with `-c adminEmail=...`.
+- `StreamTokenSecret` — resolver stream-token HMAC key. Must be shared
+  across resolver tasks (there are 2) or a token signed by one fails
+  validation on another.
 
 ### Data layer
 
-- **RDS Postgres 16.3** on `t4g.micro` in the isolated tier. Single-AZ,
+- **RDS Postgres 16.9** on `t4g.micro` in the isolated tier. Single-AZ,
   20 GB, 7-day backups, snapshot-on-destroy. Source of truth for flag
   definitions, environments, API keys, and audit log. Only the admin
-  API writes; the resolver reads.
+  API writes; the resolver reads. The minor version is pinned via
+  `PostgresEngineVersion.of("16.9", "16")` rather than the CDK enum,
+  because specific minors (e.g. 16.3) get retired per-region.
 - **ElastiCache Redis 7.1**, single `t4g.micro` node, isolated tier.
   Used as a **pub/sub bus only** — no persistence by design. The admin
   API publishes flag-change events; resolver tasks subscribe and fan
@@ -78,7 +90,14 @@ definitions pull `:latest`.
 ### Compute — single ECS cluster, two Fargate services
 
 Both services share one cluster and inherit `commonEnv`
-(`NODE_ENV`, `LOG_LEVEL`, `REDIS_URL`).
+(`NODE_ENV`, `LOG_LEVEL`, `REDIS_URL`) plus the DB-connection env
+(`DB_HOST`/`DB_PORT`/`DB_NAME`/`DB_USER`).
+
+The images (built from [`apps/admin-api/Dockerfile`](../apps/admin-api/Dockerfile)
+and [`apps/resolver/Dockerfile`](../apps/resolver/Dockerfile)) run under `tsx`,
+not `node dist/...`, because the workspace packages export raw TypeScript whose
+`.js` import specifiers Node's type-stripping won't remap. See
+[AWS-DEPLOY.md](./AWS-DEPLOY.md) for the image, entrypoint, and push details.
 
 **Admin API** — `ApplicationLoadBalancedFargateService`, **internal**
 ALB, 1 task, 256 CPU / 512 MB. Health check on `/api/v1/health`.
